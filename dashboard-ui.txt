@@ -1,0 +1,462 @@
+Create a modern enterprise web dashboard called "NPE Platform Portal" for Kubernetes and Red Hat OpenShift platform engineers.
+
+PURPOSE
+This is an internal multi-cluster operations portal used by a Platform Engineering/SRE team to monitor and operate Kubernetes and OpenShift clusters.
+
+The portal will eventually manage approximately 6 OpenShift clusters. It should provide a consolidated operational view so engineers do not need to constantly switch between individual OpenShift consoles or run kubectl/oc commands.
+
+DESIGN STYLE
+Create a professional enterprise operations dashboard.
+
+Use:
+- React + TypeScript
+- Clean modern enterprise UI
+- Dark navy left navigation
+- White/light-gray main content area
+- Compact but highly readable layout
+- Subtle borders and shadows
+- Rounded cards, but avoid excessive rounding
+- Strong information hierarchy
+- Status badges for Healthy, Warning, Critical, and Unavailable
+- Green only for healthy/success
+- Amber for warnings
+- Red for critical/failure
+- Gray for unavailable/unknown
+- Responsive layout
+- Desktop-first design for engineers using large monitors
+
+Avoid:
+- Consumer-style dashboard design
+- Excessive gradients
+- Huge cards
+- Decorative charts without operational value
+- Excessive animations
+- Making everything look clickable when it is not
+
+LEFT SIDEBAR
+
+At the top display:
+
+NPE Platform Portal
+Platform Engineering
+
+Navigation:
+
+Overview
+
+FLEET
+- Clusters
+- Nodes
+- Workloads
+
+OPERATIONS
+- Operations
+- Validation
+- Upgrades
+
+REPORTING
+- Reports
+
+ADMINISTRATION
+- OpenShift Consoles
+- Administration
+
+Highlight the currently selected menu item.
+
+OVERVIEW PAGE
+
+Header:
+Platform Overview
+
+Subtitle:
+Fleet health, operational status, and items requiring attention.
+
+Top-right controls:
+- Refresh button
+- Last refreshed timestamp
+
+FIRST ROW — SUMMARY CARDS
+
+Create five compact cards:
+
+Total Clusters
+Healthy
+Warning
+Unavailable
+Active Operations
+
+Example:
+
+Total Clusters       6
+Healthy              5
+Warning              1
+Unavailable          0
+Active Operations    0
+
+Each card should be clickable when it has a corresponding detailed view.
+
+NEEDS ATTENTION
+
+Below the summary cards create a prominent section:
+
+"Needs Attention"
+
+This is one of the most important sections of the dashboard.
+
+If everything is healthy display:
+
+✓ No active cluster health issues
+
+If problems exist display a table:
+
+Severity | Cluster | Resource | Problem | Age
+
+Examples:
+
+Critical | npe03 | worker-08 | Node NotReady | 8m
+Warning | npe03 | payments-api | CrashLoopBackOff | 12m
+Warning | npe05 | catalog-api | 14 container restarts | 23m
+
+Clicking an issue should navigate to the affected cluster/resource.
+
+CLUSTER STATUS
+
+Create a table showing all managed clusters.
+
+Columns:
+
+Cluster
+Environment
+Platform
+Version
+Nodes
+Pods
+Warnings
+Status
+Last Checked
+
+Example:
+
+npe01 | NPE | OpenShift | 4.20.12 | 12/12 | 342/342 | 0 | Healthy | 20 sec ago
+npe02 | NPE | OpenShift | 4.20.12 | 10/10 | 288/288 | 0 | Healthy | 22 sec ago
+npe03 | NPE | OpenShift | 4.20.11 | 11/12 | 317/321 | 7 | Warning | 18 sec ago
+
+Make cluster names clickable.
+
+Add a chevron at the right side of each row to clearly indicate drill-down capability.
+
+Do not make static table text look like buttons.
+
+QUICK ACTIONS
+
+Add a compact Quick Actions section:
+
+Run Validation
+Start Upgrade
+Node Operations
+View Reports
+
+Operational/write actions should support disabled states if the user does not have permission or the feature has not yet been enabled.
+
+OPERATIONS CENTER
+
+Create a section displaying current and recent automation jobs.
+
+Columns:
+
+Operation
+Cluster
+Started By
+Started
+Progress
+Status
+
+Examples:
+
+Cluster Upgrade | npe02 | jsmith | 10:32 AM | 65% | Running
+Pre-Upgrade Validation | npe04 | mjones | 9:15 AM | 100% | Completed
+
+If no operations exist:
+
+"No active operations"
+
+CLUSTER DETAIL PAGE
+
+When a user clicks a cluster, navigate to:
+
+/clusters/{clusterId}
+
+Header:
+
+NPE Cluster 01
+OpenShift 4.20.12
+NPE
+Healthy
+
+Provide tabs:
+
+Overview
+Nodes
+Namespaces
+Workloads
+Events
+Operators
+Health
+
+CLUSTER OVERVIEW
+
+Display:
+
+API Status
+Kubernetes/OpenShift Version
+Platform
+Node Count
+Pod Count
+Namespace Count
+Warning Events
+Last Checked
+
+Include a health summary:
+
+Nodes               12/12 Ready
+Pods                342/342 Running
+Unhealthy Pods      0
+High-Restart Pods   0
+Warning Events      0
+
+If console_url exists provide:
+
+"Open OpenShift Console"
+
+This should open the cluster's real OpenShift console in a new tab.
+
+NODES PAGE
+
+Display an operational node table:
+
+Node
+Status
+Roles
+Version
+CPU Capacity
+Memory Capacity
+Pods
+Age
+
+Example:
+
+worker-01 | Ready | worker | v1.33 | 16 cores | 64 GiB | 42 | 102d
+
+Use clear status indicators.
+
+WORKLOADS PAGE
+
+Display:
+
+Namespace
+Pod
+Status
+Ready
+Restarts
+Node
+Age
+
+Provide search and filters:
+
+Namespace
+Status
+Node
+
+Highlight:
+
+CrashLoopBackOff
+ImagePullBackOff
+Pending
+Failed
+High restart counts
+
+EVENTS PAGE
+
+Display Kubernetes/OpenShift events.
+
+Columns:
+
+Severity
+Namespace
+Resource
+Reason
+Message
+Count
+Last Seen
+
+Warning events should be visually prominent without overwhelming the UI.
+
+HEALTH PAGE
+
+Create a health-analysis view.
+
+Sections:
+
+Node Health
+Pod Health
+Restart Analysis
+Warning Events
+API Reachability
+
+Example:
+
+Node Health                 Healthy
+12 / 12 nodes Ready
+
+Pod Health                  Warning
+317 / 321 pods healthy
+
+Restart Analysis            Warning
+2 pods exceed restart threshold
+
+Warning Events              7
+
+API Reachability            Healthy
+
+MULTI-CLUSTER BEHAVIOR
+
+The portal must treat every cluster independently.
+
+If one cluster API is unreachable, the entire dashboard must NOT hang.
+
+Example:
+
+npe01   Healthy
+npe02   Healthy
+npe03   Unavailable
+npe04   Healthy
+npe05   Warning
+npe06   Healthy
+
+Show the unavailable cluster clearly while continuing to display data from all reachable clusters.
+
+HEALTH STATES
+
+Support:
+
+Healthy
+Warning
+Critical
+Unavailable
+Unknown
+
+Determine health using operational signals such as:
+
+Node readiness
+Unhealthy pods
+CrashLoopBackOff
+ImagePullBackOff
+Pending pods
+Failed pods
+High container restart counts
+Warning events
+Cluster API availability
+
+SEARCH
+
+Add a global search field in the header:
+
+"Search clusters, nodes, namespaces, pods..."
+
+Search results should allow engineers to quickly navigate directly to resources.
+
+FUTURE OPERATIONS
+
+Design the UI so these features can later be enabled without redesigning the portal:
+
+Cluster validation
+Pre-upgrade validation
+OpenShift upgrades
+Post-upgrade validation
+Worker-node scaling
+Node maintenance
+Automation job execution
+Upgrade history
+Operational reports
+
+For an upgrade workflow eventually support:
+
+Pre-Upgrade Validation
+        ↓
+Upgrade Cluster
+        ↓
+Live Upgrade Progress
+        ↓
+Post-Upgrade Validation
+        ↓
+Generate Upgrade Report
+
+SECURITY
+
+This is an enterprise internal platform.
+
+Never expose:
+- kubeconfig
+- Kubernetes tokens
+- OpenShift tokens
+- service-account credentials
+- API credentials
+
+The browser communicates only with the backend API.
+
+ARCHITECTURE
+
+Frontend:
+React + TypeScript
+
+Backend:
+Python FastAPI
+
+Data sources:
+Kubernetes API
+OpenShift API
+
+Future automation:
+GitHub Actions / controlled automation workflows
+
+Architecture:
+
+Browser
+   ↓
+React Portal
+   ↓
+FastAPI Backend
+   ↓
+Cluster Registry
+   ↓
+Kubernetes/OpenShift APIs
+
+Operational actions:
+
+React Portal
+   ↓
+FastAPI
+   ↓
+Authorized automation workflow
+   ↓
+Existing platform automation/scripts
+   ↓
+Target OpenShift cluster
+
+UX PRIORITY
+
+Optimize the dashboard for experienced Kubernetes/OpenShift platform engineers.
+
+The most important question the Overview page should answer within approximately 5 seconds is:
+
+"What needs my attention across my clusters?"
+
+The second question should be:
+
+"Which cluster/resource should I investigate?"
+
+The third should be:
+
+"What operational action is currently running or should I run next?"
+
+Prioritize operational clarity, fast troubleshooting, fleet visibility, and safe navigation over decorative visual design.
