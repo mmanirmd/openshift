@@ -1,462 +1,217 @@
-Create a modern enterprise web dashboard called "NPE Platform Portal" for Kubernetes and Red Hat OpenShift platform engineers.
+ Block One — Cluster Status
 
-PURPOSE
-This is an internal multi-cluster operations portal used by a Platform Engineering/SRE team to monitor and operate Kubernetes and OpenShift clusters.
+Title: 1. Cluster Status
 
-The portal will eventually manage approximately 6 OpenShift clusters. It should provide a consolidated operational view so engineers do not need to constantly switch between individual OpenShift consoles or run kubectl/oc commands.
+Description: Overview of all managed OpenShift clusters.
 
-DESIGN STYLE
-Create a professional enterprise operations dashboard.
+Display exactly four summary cards in one row:
 
-Use:
-- React + TypeScript
-- Clean modern enterprise UI
-- Dark navy left navigation
-- White/light-gray main content area
-- Compact but highly readable layout
-- Subtle borders and shadows
-- Rounded cards, but avoid excessive rounding
-- Strong information hierarchy
-- Status badges for Healthy, Warning, Critical, and Unavailable
-- Green only for healthy/success
-- Amber for warnings
-- Red for critical/failure
-- Gray for unavailable/unknown
-- Responsive layout
-- Desktop-first design for engineers using large monitors
+Card
 
-Avoid:
-- Consumer-style dashboard design
-- Excessive gradients
-- Huge cards
-- Decorative charts without operational value
-- Excessive animations
-- Making everything look clickable when it is not
-
-LEFT SIDEBAR
-
-At the top display:
-
-NPE Platform Portal
-Platform Engineering
-
-Navigation:
-
-Overview
-
-FLEET
-- Clusters
-- Nodes
-- Workloads
-
-OPERATIONS
-- Operations
-- Validation
-- Upgrades
-
-REPORTING
-- Reports
-
-ADMINISTRATION
-- OpenShift Consoles
-- Administration
-
-Highlight the currently selected menu item.
-
-OVERVIEW PAGE
-
-Header:
-Platform Overview
-
-Subtitle:
-Fleet health, operational status, and items requiring attention.
-
-Top-right controls:
-- Refresh button
-- Last refreshed timestamp
-
-FIRST ROW — SUMMARY CARDS
-
-Create five compact cards:
+Sample value
 
 Total Clusters
+
+6
+
 Healthy
+
+5 (83%)
+
 Warning
+
+1 (17%)
+
 Unavailable
-Active Operations
 
-Example:
+0 (0%)
 
-Total Clusters       6
-Healthy              5
-Warning              1
-Unavailable          0
-Active Operations    0
+Use blue for total, green for healthy, amber for warning, and gray/red for unavailable.
 
-Each card should be clickable when it has a corresponding detailed view.
+Important: Do not display individual cluster lists, cluster tables, node lists, or pod counts in this section.
 
-NEEDS ATTENTION
+3. Block Two — Node Infrastructure CPU & Memory (VM / Node)
 
-Below the summary cards create a prominent section:
+Title: 2. Node Infrastructure CPU & Memory (VM / Node)
 
-"Needs Attention"
+Description: Aggregated CPU and memory capacity, Kubernetes allocatable resources, and node-level resource utilization across all selected OpenShift clusters.
 
-This is one of the most important sections of the dashboard.
+Include an All Clusters dropdown and Live Data indicator.
 
-If everything is healthy display:
+Create two equally sized cards side by side.
 
-✓ No active cluster health issues
+Left Card — CPU (Nodes / VMs)
 
-If problems exist display a table:
+Show three metrics:
 
-Severity | Cluster | Resource | Problem | Age
+Total CPU Capacity: 960 vCPUs
 
-Examples:
+Allocatable CPU: 888 vCPUs
 
-Critical | npe03 | worker-08 | Node NotReady | 8m
-Warning | npe03 | payments-api | CrashLoopBackOff | 12m
-Warning | npe05 | catalog-api | 14 container restarts | 23m
+Used CPU: 405 vCPUs
 
-Clicking an issue should navigate to the affected cluster/resource.
+Include a donut chart showing CPU usage and remaining capacity.
 
-CLUSTER STATUS
+Use green for CPU utilization and light gray for remaining capacity.
 
-Create a table showing all managed clusters.
+Right Card — Memory (Nodes / VMs)
 
-Columns:
+Show three metrics:
 
-Cluster
-Environment
-Platform
-Version
-Nodes
-Pods
-Warnings
-Status
-Last Checked
+Total Memory Capacity: 3.84 TiB
 
-Example:
+Allocatable Memory: 3.28 TiB
 
-npe01 | NPE | OpenShift | 4.20.12 | 12/12 | 342/342 | 0 | Healthy | 20 sec ago
-npe02 | NPE | OpenShift | 4.20.12 | 10/10 | 288/288 | 0 | Healthy | 22 sec ago
-npe03 | NPE | OpenShift | 4.20.11 | 11/12 | 317/321 | 7 | Warning | 18 sec ago
+Used Memory: 2.23 TiB
 
-Make cluster names clickable.
+Include a donut chart showing memory usage and remaining capacity.
 
-Add a chevron at the right side of each row to clearly indicate drill-down capability.
+Use purple for memory utilization and light gray for remaining capacity.
 
-Do not make static table text look like buttons.
+Technical requirements:
 
-QUICK ACTIONS
+Total capacity represents the combined CPU and memory capacity of OpenShift node VMs.
 
-Add a compact Quick Actions section:
+Allocatable represents resources available to Kubernetes after node reservations.
 
-Run Validation
-Start Upgrade
-Node Operations
-View Reports
+Used represents current node-level resource consumption.
 
-Operational/write actions should support disabled states if the user does not have permission or the feature has not yet been enabled.
+Use Kubernetes/OpenShift node capacity and allocatable values as the source of truth for those metrics.
 
-OPERATIONS CENTER
+Do not assume vSphere hypervisor utilization is identical to Kubernetes node utilization.
 
-Create a section displaying current and recent automation jobs.
+Calculate utilization percentages consistently against the explicitly labeled denominator.
 
-Columns:
+Remaining allocatable capacity = allocatable minus measured usage, where the measurements are comparable.
 
-Operation
-Cluster
-Started By
-Started
-Progress
-Status
+All numerical values are illustrative mock data, not live measurements.
 
-Examples:
+Important: Do not display individual node lists or tables in this block.
 
-Cluster Upgrade | npe02 | jsmith | 10:32 AM | 65% | Running
-Pre-Upgrade Validation | npe04 | mjones | 9:15 AM | 100% | Completed
+4. Block Three — Kubernetes Workload CPU & Memory (Pods)
 
-If no operations exist:
+Title: 3. Kubernetes Workload CPU & Memory (Pods)
 
-"No active operations"
+Description: Aggregated CPU and memory requests, limits, and actual resource usage for workloads across selected OpenShift clusters.
 
-CLUSTER DETAIL PAGE
+Include an All Clusters dropdown and Live Data indicator.
 
-When a user clicks a cluster, navigate to:
+Create two equally sized cards side by side.
 
-/clusters/{clusterId}
-
-Header:
-
-NPE Cluster 01
-OpenShift 4.20.12
-NPE
-Healthy
-
-Provide tabs:
-
-Overview
-Nodes
-Namespaces
-Workloads
-Events
-Operators
-Health
-
-CLUSTER OVERVIEW
+Left Card — CPU (Pods)
 
 Display:
 
-API Status
-Kubernetes/OpenShift Version
-Platform
-Node Count
-Pod Count
-Namespace Count
-Warning Events
-Last Checked
+CPU Requests: 612 vCPUs
 
-Include a health summary:
+CPU Limits: 924 vCPUs
 
-Nodes               12/12 Ready
-Pods                342/342 Running
-Unhealthy Pods      0
-High-Restart Pods   0
-Warning Events      0
+Current CPU Usage: 282 vCPUs
 
-If console_url exists provide:
+Show requests, limits, and usage as separate metrics.
 
-"Open OpenShift Console"
+Add a donut chart comparing actual CPU usage against the total allocatable CPU capacity of 888 vCPUs.
 
-This should open the cluster's real OpenShift console in a new tab.
+Use green for used CPU and light gray for remaining allocatable capacity.
 
-NODES PAGE
+Show utilization percentages for requests, limits, and usage relative to allocatable CPU.
 
-Display an operational node table:
-
-Node
-Status
-Roles
-Version
-CPU Capacity
-Memory Capacity
-Pods
-Age
-
-Example:
-
-worker-01 | Ready | worker | v1.33 | 16 cores | 64 GiB | 42 | 102d
-
-Use clear status indicators.
-
-WORKLOADS PAGE
+Right Card — Memory (Pods)
 
 Display:
 
-Namespace
-Pod
-Status
-Ready
-Restarts
-Node
-Age
+Memory Requests: 1.88 TiB
 
-Provide search and filters:
+Memory Limits: 2.96 TiB
 
-Namespace
-Status
-Node
+Current Memory Usage: 980 GiB
 
-Highlight:
+Add a donut chart comparing actual memory usage against the total allocatable memory capacity of 3.28 TiB.
 
-CrashLoopBackOff
-ImagePullBackOff
-Pending
-Failed
-High restart counts
+Use purple for used memory and light gray for remaining allocatable capacity.
 
-EVENTS PAGE
+Show percentages relative to allocatable memory.
 
-Display Kubernetes/OpenShift events.
+Technical requirements:
 
-Columns:
+Requests represent resources requested by Kubernetes workloads.
 
-Severity
-Namespace
-Resource
-Reason
-Message
-Count
-Last Seen
+Limits represent maximum configured container resource limits.
 
-Warning events should be visually prominent without overwhelming the UI.
+Actual usage represents current workload consumption.
 
-HEALTH PAGE
+Limits may exceed allocatable capacity because Kubernetes permits overcommitment.
 
-Create a health-analysis view.
+Never treat CPU or memory limits as physical available capacity.
 
-Sections:
+Clearly distinguish node-level usage from pod-level usage.
 
-Node Health
-Pod Health
-Restart Analysis
-Warning Events
-API Reachability
+Do not include a Total Pods card.
 
-Example:
+Do not include pod lists, workload tables, or individual cluster tables.
 
-Node Health                 Healthy
-12 / 12 nodes Ready
 
-Pod Health                  Warning
-317 / 321 pods healthy
+. Key Information Panel
 
-Restart Analysis            Warning
-2 pods exceed restart threshold
+At the bottom, add a subtle light-blue informational panel titled Key Information.
 
-Warning Events              7
+Explain briefly:
 
-API Reachability            Healthy
+Node infrastructure metrics show VM/node capacity, allocatable resources, and actual node utilization.
 
-MULTI-CLUSTER BEHAVIOR
+Kubernetes workload metrics show pod requests, limits, and actual usage.
 
-The portal must treat every cluster independently.
+Requests and limits are not the same as actual consumption.
 
-If one cluster API is unreachable, the entire dashboard must NOT hang.
+CPU and memory limits can exceed allocatable resources because of overcommitment.
 
-Example:
+Historical trends and detailed analysis are available in Reports.
 
-npe01   Healthy
-npe02   Healthy
-npe03   Unavailable
-npe04   Healthy
-npe05   Warning
-npe06   Healthy
 
-Show the unavailable cluster clearly while continuing to display data from all reachable clusters.
+6. Visual Design Requirements
 
-HEALTH STATES
+Aspect ratio: 3:4 portrait
 
-Support:
+Professional enterprise operations dashboard
 
-Healthy
-Warning
-Critical
-Unavailable
-Unknown
+Dark navy sidebar
 
-Determine health using operational signals such as:
+White or very light gray content background
 
-Node readiness
-Unhealthy pods
-CrashLoopBackOff
-ImagePullBackOff
-Pending pods
-Failed pods
-High container restart counts
-Warning events
-Cluster API availability
+Blue numbered section indicators: 1, 2, 3
 
-SEARCH
+Rounded cards with subtle borders and shadows
 
-Add a global search field in the header:
+Consistent spacing and alignment
 
-"Search clusters, nodes, namespaces, pods..."
+Large, legible numerical metrics
 
-Search results should allow engineers to quickly navigate directly to resources.
+Green CPU usage donut charts
 
-FUTURE OPERATIONS
+Purple memory usage donut charts
 
-Design the UI so these features can later be enabled without redesigning the portal:
+Light-gray remaining-capacity segments
 
-Cluster validation
-Pre-upgrade validation
-OpenShift upgrades
-Post-upgrade validation
-Worker-node scaling
-Node maintenance
-Automation job execution
-Upgrade history
-Operational reports
+Clear technical labels and units
 
-For an upgrade workflow eventually support:
+Consistent visual hierarchy
 
-Pre-Upgrade Validation
-        ↓
-Upgrade Cluster
-        ↓
-Live Upgrade Progress
-        ↓
-Post-Upgrade Validation
-        ↓
-Generate Upgrade Report
+No unnecessary charts, tables, or decorative elements
 
-SECURITY
+No fabricated live-data claims
 
-This is an enterprise internal platform.
+7. Layout Order — Mandatory
 
-Never expose:
-- kubeconfig
-- Kubernetes tokens
-- OpenShift tokens
-- service-account credentials
-- API credentials
+The dashboard must contain exactly these three main sections, stacked vertically:
 
-The browser communicates only with the backend API.
+Block 1: Cluster Status — four summary cards only.
 
-ARCHITECTURE
+Block 2: Node Infrastructure CPU & Memory (VM / Node) — two cards for CPU and memory, each showing capacity, allocatable, and usage.
 
-Frontend:
-React + TypeScript
+Block 3: Kubernetes Workload CPU & Memory (Pods) — two cards for CPU and memory, each showing requests, limits, and actual usage.
 
-Backend:
-Python FastAPI
+Finish with the Key Information panel.
 
-Data sources:
-Kubernetes API
-OpenShift API
+Do not merge the node and workload sections. Do not add cluster, node, or pod tables to the main overview.
 
-Future automation:
-GitHub Actions / controlled automation workflows
 
-Architecture:
-
-Browser
-   ↓
-React Portal
-   ↓
-FastAPI Backend
-   ↓
-Cluster Registry
-   ↓
-Kubernetes/OpenShift APIs
-
-Operational actions:
-
-React Portal
-   ↓
-FastAPI
-   ↓
-Authorized automation workflow
-   ↓
-Existing platform automation/scripts
-   ↓
-Target OpenShift cluster
-
-UX PRIORITY
-
-Optimize the dashboard for experienced Kubernetes/OpenShift platform engineers.
-
-The most important question the Overview page should answer within approximately 5 seconds is:
-
-"What needs my attention across my clusters?"
-
-The second question should be:
-
-"Which cluster/resource should I investigate?"
-
-The third should be:
-
-"What operational action is currently running or should I run next?"
-
-Prioritize operational clarity, fast troubleshooting, fleet visibility, and safe navigation over decorative visual design.
