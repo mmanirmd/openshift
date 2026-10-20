@@ -1,217 +1,352 @@
- Block One — Cluster Status
+# GitHub Copilot Prompt — NPE Platform Portal: Compare Clusters
 
-Title: 1. Cluster Status
+Act as a senior React/TypeScript frontend engineer, Python FastAPI backend engineer, OpenShift platform engineer, and enterprise UI/UX designer.
 
-Description: Overview of all managed OpenShift clusters.
+## Objective
 
-Display exactly four summary cards in one row:
+Implement a new **Compare Clusters** feature in my existing NPE Platform Portal.
 
-Card
+Use the attached dashboard image as the primary visual reference.
 
-Sample value
+The feature must allow platform engineers to compare OpenShift clusters by configuration, versions, resource presence, and meaningful configuration differences.
 
-Total Clusters
+**Important:** Keep the page clean, spacious, readable, and read-only. Do not create an overcrowded dashboard.
 
-6
+## 1. Existing Application
 
-Healthy
+My application uses:
 
-5 (83%)
+- Frontend: React, TypeScript, Vite
+- Backend: Python FastAPI
+- Infrastructure: Multiple OpenShift clusters running on VMware vSphere
+- Kubernetes/OpenShift APIs for collecting cluster information
+- Existing navigation, authentication, shared UI components, and cluster registry
 
-Warning
+Before implementing anything, inspect the existing project structure, components, routes, API patterns, styling, and authentication.
 
-1 (17%)
+Reuse existing components and conventions. Do not rebuild the application or change unrelated features.
 
-Unavailable
+## 2. Navigation
 
-0 (0%)
+Add a menu item named **Compare Clusters** under the CONFIGURATION section in the left navigation sidebar.
 
-Use blue for total, green for healthy, amber for warning, and gray/red for unavailable.
+Preserve the existing sidebar design, including its dark navy background, icons, active navigation highlighting, and spacing.
 
-Important: Do not display individual cluster lists, cluster tables, node lists, or pod counts in this section.
+Page title: **Compare Clusters**
 
-3. Block Two — Node Infrastructure CPU & Memory (VM / Node)
+Subtitle: **Compare configuration, versions, and key platform components across OpenShift clusters.**
 
-Title: 2. Node Infrastructure CPU & Memory (VM / Node)
+## 3. Cluster Selection
 
-Description: Aggregated CPU and memory capacity, Kubernetes allocatable resources, and node-level resource utilization across all selected OpenShift clusters.
+At the top of the page, create a cluster selection panel.
 
-Include an All Clusters dropdown and Live Data indicator.
+Requirements:
 
-Create two equally sized cards side by side.
+- Display the available clusters from the backend.
+- Allow selecting 2–6 clusters.
+- Show cluster name and environment.
+- Use checkbox-style cluster selection cards.
+- Include a Compare button.
+- Allow selecting a baseline cluster.
+- Disable comparison until at least two clusters are selected.
+- Display loading and error states.
 
-Left Card — CPU (Nodes / VMs)
+Example cluster names: npe01, npe02, npe03, npe04, npe05, npe06.
 
-Show three metrics:
+Do not hardcode cluster names or environments in production logic.
 
-Total CPU Capacity: 960 vCPUs
+## 4. Comparison Categories
 
-Allocatable CPU: 888 vCPUs
+Below cluster selection, create horizontally arranged category tabs:
 
-Used CPU: 405 vCPUs
+1. Overview
+2. OpenShift Version
+3. Operators
+4. Security
+5. Networking
+6. Storage
+7. Node Configuration
+8. Observability
 
-Include a donut chart showing CPU usage and remaining capacity.
+Selecting a category should display the relevant comparison results without navigating to another page.
 
-Use green for CPU utilization and light gray for remaining capacity.
+Use the attached image for tab styling.
 
-Right Card — Memory (Nodes / VMs)
+## 5. Comparison Summary
 
-Show three metrics:
+Display four compact summary cards:
 
-Total Memory Capacity: 3.84 TiB
+**Matching**
+- Number of configuration items that match across selected clusters.
 
-Allocatable Memory: 3.28 TiB
+**Different**
+- Number of configuration items with different values.
 
-Used Memory: 2.23 TiB
+**Missing**
+- Number of resources missing from one or more selected clusters.
 
-Include a donut chart showing memory usage and remaining capacity.
+**Unknown**
+- Number of items that could not be retrieved or compared.
 
-Use purple for memory utilization and light gray for remaining capacity.
+Use green, amber, red, and neutral-gray status indicators.
 
-Technical requirements:
+Do not confuse an intentional configuration difference with a critical configuration problem.
 
-Total capacity represents the combined CPU and memory capacity of OpenShift node VMs.
+## 6. Comparison by Category
 
-Allocatable represents resources available to Kubernetes after node reservations.
+Create a clean table with these columns:
 
-Used represents current node-level resource consumption.
+| Category | Matching | Different | Missing | Total | Status | Action |
+|---|---|---|---|---|---|---|
 
-Use Kubernetes/OpenShift node capacity and allocatable values as the source of truth for those metrics.
+Include these categories:
 
-Do not assume vSphere hypervisor utilization is identical to Kubernetes node utilization.
+- OpenShift Version
+- Operators
+- Security
+- Networking
+- Storage
+- Node Configuration
+- Observability
 
-Calculate utilization percentages consistently against the explicitly labeled denominator.
+Each row should show the number of matching, different, missing, and total items.
 
-Remaining allocatable capacity = allocatable minus measured usage, where the measurements are comparable.
+The **View Details** action should open the selected category's comparison details within the same page.
 
-All numerical values are illustrative mock data, not live measurements.
+Do not display large YAML files in the summary table.
 
-Important: Do not display individual node lists or tables in this block.
+## 7. Key Differences
 
-4. Block Three — Kubernetes Workload CPU & Memory (Pods)
+Below the category table, create a section named **Key Differences**.
 
-Title: 3. Kubernetes Workload CPU & Memory (Pods)
+Display the most important configuration differences as compact, clickable list items.
 
-Description: Aggregated CPU and memory requests, limits, and actual resource usage for workloads across selected OpenShift clusters.
+Each item should contain:
 
-Include an All Clusters dropdown and Live Data indicator.
+- Resource or configuration name
+- Category
+- Affected cluster(s)
+- Brief description
+- Severity or review status
 
-Create two equally sized cards side by side.
+Examples:
 
-Left Card — CPU (Pods)
+- ACS policy baseline missing in npe03
+- Gatekeeper operator version mismatch
+- Worker MachineConfigPool updating
+- ClusterLogForwarder configuration differs
+- Default StorageClass differs
 
-Display:
+Limit the initial display to five items and provide a View All option.
 
-CPU Requests: 612 vCPUs
+Clicking an item should populate the adjacent Detail View panel.
 
-CPU Limits: 924 vCPUs
+## 8. Detail View
 
-Current CPU Usage: 282 vCPUs
+Create a panel named **Detail View** next to Key Differences, matching the attached dashboard layout.
 
-Show requests, limits, and usage as separate metrics.
+When a configuration item is selected, display:
 
-Add a donut chart comparing actual CPU usage against the total allocatable CPU capacity of 888 vCPUs.
+- Resource name
+- Resource type/category
+- Namespace, where applicable
+- Comparison status
+- Short explanation
+- Side-by-side values for selected clusters
 
-Use green for used CPU and light gray for remaining allocatable capacity.
+Example:
 
-Show utilization percentages for requests, limits, and usage relative to allocatable CPU.
+**Gatekeeper Version**
 
-Right Card — Memory (Pods)
+| Cluster | Version |
+|---|---|
+| npe01 | 3.18.0 |
+| npe02 | 3.18.0 |
+| npe03 | 3.17.0 |
 
-Display:
+Highlight differences from the selected baseline.
 
-Memory Requests: 1.88 TiB
+Add a **View YAML Diff** option for supported Kubernetes resources.
 
-Memory Limits: 2.96 TiB
+The YAML diff should:
 
-Current Memory Usage: 980 GiB
+- Compare normalized resource configurations.
+- Focus on meaningful `spec` fields and selected configuration metadata.
+- Exclude generated metadata such as UID, resourceVersion, managedFields, and timestamps.
+- Exclude sensitive information, including Secret contents, credentials, tokens, and private keys.
+- Support nested field differences and missing resources.
+- Show a clear message when a comparison is unavailable.
 
-Add a donut chart comparing actual memory usage against the total allocatable memory capacity of 3.28 TiB.
+For lists representing sets of named resources, normalize ordering where appropriate.
 
-Use purple for used memory and light gray for remaining allocatable capacity.
+## 9. Configuration Comparison Rules
 
-Show percentages relative to allocatable memory.
+Support three comparison levels:
 
-Technical requirements:
+**Level 1 — Presence**
+- Present
+- Missing
+- Unknown
 
-Requests represent resources requested by Kubernetes workloads.
+**Level 2 — Version and Status**
+- Operator versions
+- OpenShift version and channel
+- Installation status
+- MachineConfigPool conditions
 
-Limits represent maximum configured container resource limits.
+**Level 3 — Configuration**
+- Compare meaningful fields from selected platform resources.
 
-Actual usage represents current workload consumption.
+Prioritize these resource types:
 
-Limits may exceed allocatable capacity because Kubernetes permits overcommitment.
+- ClusterVersion
+- ClusterOperators
+- Operator Subscriptions and CSVs
+- MachineConfigPools
+- MachineConfigs
+- KubeletConfigs
+- Gatekeeper ConstraintTemplates and constraints
+- SecurityContextConstraints
+- ClusterLogForwarders
+- IngressControllers
+- DNS and Network configuration
+- StorageClasses
+- Cert-Manager Issuers and ClusterIssuers
+- Service Mesh configuration
 
-Never treat CPU or memory limits as physical available capacity.
+Where available, include ACS policy configuration through supported APIs.
 
-Clearly distinguish node-level usage from pod-level usage.
+Do not attempt to compare every Kubernetes resource in the first implementation.
 
-Do not include a Total Pods card.
+Support expected-difference rules for environment-specific settings such as API endpoints, ingress VIPs, CIDRs, and storage endpoints.
 
-Do not include pod lists, workload tables, or individual cluster tables.
+A configuration difference should not automatically be classified as a critical issue.
 
+## 10. Recommendations
 
-. Key Information Panel
+In the Detail View, display a small recommendation section when a meaningful difference is detected.
 
-At the bottom, add a subtle light-blue informational panel titled Key Information.
+Examples:
 
-Explain briefly:
+- Review a missing security policy.
+- Verify whether an older operator version is intentional.
+- Investigate an updating or degraded MachineConfigPool.
+- Confirm whether a networking difference is expected.
 
-Node infrastructure metrics show VM/node capacity, allocatable resources, and actual node utilization.
+Recommendations must be read-only and advisory.
 
-Kubernetes workload metrics show pod requests, limits, and actual usage.
+Do not provide buttons that automatically change cluster configuration.
 
-Requests and limits are not the same as actual consumption.
+## 11. FastAPI Backend
 
-CPU and memory limits can exceed allocatable resources because of overcommitment.
+Inspect the existing FastAPI architecture and extend it using the established patterns.
 
-Historical trends and detailed analysis are available in Reports.
+Suggested API endpoints:
 
+- `GET /api/compare/clusters`
+- `POST /api/compare`
+- `GET /api/compare/resources/{resource_id}/diff`
 
-6. Visual Design Requirements
+The backend should:
 
-Aspect ratio: 3:4 portrait
+- Reuse the existing cluster registry and authentication.
+- Retrieve resource information using Kubernetes/OpenShift APIs.
+- Collect information concurrently with reasonable timeouts.
+- Normalize resource data before comparison.
+- Compare selected clusters against an optional baseline.
+- Return structured results for matching, different, missing, and unknown items.
+- Cache results where appropriate.
+- Handle unavailable clusters and insufficient permissions gracefully.
+- Avoid returning credentials or sensitive resource fields.
+- Enforce read-only access.
 
-Professional enterprise operations dashboard
+Keep comparison logic separate from API route handlers.
 
-Dark navy sidebar
+Create reusable normalization and comparison services.
 
-White or very light gray content background
+## 12. UI Design Requirements
 
-Blue numbered section indicators: 1, 2, 3
+Follow the attached dashboard image closely.
 
-Rounded cards with subtle borders and shadows
+Visual style:
 
-Consistent spacing and alignment
+- Dark navy left sidebar.
+- Light-gray application background.
+- White cards with subtle borders.
+- Blue accent color.
+- Green for matching.
+- Amber for differences requiring review.
+- Red for missing or confirmed critical issues.
+- Generous whitespace.
+- Compact, readable tables.
+- Rounded cards and consistent spacing.
 
-Large, legible numerical metrics
+**Avoid overcrowding.**
 
-Green CPU usage donut charts
+Use this layout order:
 
-Purple memory usage donut charts
+1. Page header
+2. Cluster selection
+3. Category tabs
+4. Four summary cards
+5. Comparison by Category table
+6. Two-column bottom section:
+   - Left: Key Differences
+   - Right: Detail View
 
-Light-gray remaining-capacity segments
+Keep detailed YAML comparisons hidden until requested.
 
-Clear technical labels and units
+Use responsive layouts for smaller screens and horizontal scrolling where needed.
 
-Consistent visual hierarchy
+Do not add unrelated charts, metrics, or additional dashboards.
 
-No unnecessary charts, tables, or decorative elements
+## 13. Functional Requirements
 
-No fabricated live-data claims
+All visible controls must work:
 
-7. Layout Order — Mandatory
+- Cluster selection
+- Baseline selection
+- Compare
+- Category tabs
+- View Details
+- Key Differences selection
+- View All
+- View YAML Diff
+- Refresh
 
-The dashboard must contain exactly these three main sections, stacked vertically:
+Provide proper loading, empty, error, and unavailable-cluster states.
 
-Block 1: Cluster Status — four summary cards only.
+Use real API data when connected. Clearly identify mock data during local development.
 
-Block 2: Node Infrastructure CPU & Memory (VM / Node) — two cards for CPU and memory, each showing capacity, allocatable, and usage.
+## 14. Implementation Approach
 
-Block 3: Kubernetes Workload CPU & Memory (Pods) — two cards for CPU and memory, each showing requests, limits, and actual usage.
+Implement in phases:
 
-Finish with the Key Information panel.
+**Phase 1:** Frontend layout and reusable components matching the attached image.
 
-Do not merge the node and workload sections. Do not add cluster, node, or pod tables to the main overview.
+**Phase 2:** FastAPI endpoints for OpenShift versions, operator versions, presence, and status.
+
+**Phase 3:** Field-level configuration comparison and normalized YAML diff.
+
+**Phase 4:** Expected-difference rules, recommendations, and report export.
+
+For each phase:
+
+1. Identify files that need modification.
+2. Explain the proposed changes briefly.
+3. Implement the changes.
+4. Add appropriate tests.
+5. Verify the existing application still works.
+6. Provide commands to run and test locally.
+
+Do not overwrite working code unnecessarily.
+
+## Expected Result
+
+A production-oriented, read-only **Compare Clusters** feature integrated into my existing NPE Platform Portal.
+
+The interface should closely resemble the attached dashboard image and help platform engineers quickly identify configuration inconsistencies across multiple OpenShift clusters.
+
+Prioritize **clarity, maintainability, meaningful comparisons, and minimal visual clutter**.
 
 
