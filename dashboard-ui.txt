@@ -1,352 +1,500 @@
-# GitHub Copilot Prompt — NPE Platform Portal: Compare Clusters
 
-Act as a senior React/TypeScript frontend engineer, Python FastAPI backend engineer, OpenShift platform engineer, and enterprise UI/UX designer.
+Act as a senior Kubernetes/OpenShift Platform Engineer, Python FastAPI developer, React/TypeScript developer, and enterprise UI/UX designer.
 
 ## Objective
 
-Implement a new **Compare Clusters** feature in my existing NPE Platform Portal.
+Implement a production-oriented **Resource Explorer** feature in my existing NPE Platform Portal.
 
-Use the attached dashboard image as the primary visual reference.
+Use the attached dashboard screenshot as the visual reference, but improve the functionality and usability where appropriate.
 
-The feature must allow platform engineers to compare OpenShift clusters by configuration, versions, resource presence, and meaningful configuration differences.
+The Resource Explorer must allow platform engineers to discover, search, list, inspect, and view Kubernetes/OpenShift resources across multiple clusters.
 
-**Important:** Keep the page clean, spacious, readable, and read-only. Do not create an overcrowded dashboard.
+**Critical requirement: The entire Resource Explorer must be strictly read-only. No resource creation, editing, patching, deletion, or execution is permitted.**
 
 ## 1. Existing Application
 
-My application uses:
+My environment:
 
 - Frontend: React, TypeScript, Vite
 - Backend: Python FastAPI
-- Infrastructure: Multiple OpenShift clusters running on VMware vSphere
-- Kubernetes/OpenShift APIs for collecting cluster information
-- Existing navigation, authentication, shared UI components, and cluster registry
+- Clusters: Multiple OpenShift clusters running on VMware vSphere
+- Development environment: Windows, VS Code, GitHub Copilot
+- Local testing: Docker Desktop Kubernetes cluster
+- Existing portal features: Overview, Clusters, Workloads, Capacity, Compare Clusters, and other platform operations
+- Cluster access: Existing backend Kubernetes/OpenShift client configuration and cluster registry
 
-Before implementing anything, inspect the existing project structure, components, routes, API patterns, styling, and authentication.
+Before writing code:
 
-Reuse existing components and conventions. Do not rebuild the application or change unrelated features.
+1. Inspect the current repository structure.
+2. Identify existing frontend routes, navigation components, API clients, authentication, and backend Kubernetes clients.
+3. Reuse existing architecture, styling, and shared components.
+4. Do not replace or refactor unrelated working features.
+5. Present an implementation plan with the files to be created or modified.
 
-## 2. Navigation
+## 2. Navigation and Page Layout
 
-Add a menu item named **Compare Clusters** under the CONFIGURATION section in the left navigation sidebar.
+Add a menu item named **Resource Explorer** under CONFIGURATION, near Compare Clusters.
 
-Preserve the existing sidebar design, including its dark navy background, icons, active navigation highlighting, and spacing.
+Page title: Resource Explorer
 
-Page title: **Compare Clusters**
+Subtitle: Search, view, and inspect Kubernetes and OpenShift resources across your clusters.
 
-Subtitle: **Compare configuration, versions, and key platform components across OpenShift clusters.**
+Follow the attached dashboard design:
 
-## 3. Cluster Selection
+- Dark navy sidebar
+- White and light-gray main workspace
+- Blue accents
+- Clean enterprise-style cards
+- Compact, readable tables
+- Consistent spacing
+- Responsive layout
 
-At the top of the page, create a cluster selection panel.
+Use three main sections:
+
+1. Resource selection and search
+2. Resource inventory
+3. Resource details panel
+
+Keep the page uncluttered. Show advanced information only when requested.
+
+## 3. Resource Selection and Search
+
+At the top, provide these controls:
+
+**Cluster**
+- Select a single cluster.
+- Support all configured clusters.
+- Default to the currently selected cluster, if available.
+- Do not hardcode cluster names.
+- Handle unavailable clusters gracefully.
+
+**Resource Type**
+- Searchable dropdown populated dynamically using Kubernetes API discovery.
+- Include standard Kubernetes resources, OpenShift resources, and CustomResourceDefinitions.
+- Display resource Kind, plural name, and API group when necessary to avoid ambiguity.
+- Example: Pods, Deployments, Routes, MachineConfigPools, SecurityContextConstraints, ClusterLogForwarders, Gatekeeper constraints.
+- Support API group/version selection when required.
+
+**Scope**
+- Automatically detect whether the selected resource type is cluster-scoped or namespaced.
+- Do not require the user to guess the scope.
+
+**Namespace**
+- For namespaced resources, allow selection of a namespace or All Namespaces.
+- Disable or hide namespace selection for cluster-scoped resources.
+- Populate namespaces from the selected cluster.
+
+**Search**
+- Search resource names.
+- Support namespace filtering, label selectors, and supported field selectors.
+- Add a clear/reset option.
+- Validate selectors and show helpful error messages.
+- Debounce free-text searches where appropriate.
+
+**Important:** Do not fetch all resource types across all clusters when the page loads. Query only the selected resource type and cluster.
+
+## 4. Resource Inventory Table
+
+Display a table of resources returned by the Kubernetes/OpenShift API.
+
+Use columns appropriate to the selected resource type.
+
+For Pods:
+- Name
+- Namespace
+- Ready
+- Status
+- Restarts
+- Age
+- Node
+
+For Deployments:
+- Name
+- Namespace
+- Desired
+- Ready
+- Available
+- Age
+
+For CronJobs:
+- Name
+- Namespace
+- Schedule
+- Suspend
+- Last Schedule
+- Active Jobs
+
+For MachineConfigPools:
+- Name
+- Updated
+- Updating
+- Degraded
+- Machine Count
+- Ready Count
+
+For generic or custom resources:
+- Name
+- Namespace, when applicable
+- Kind
+- API Version
+- Age
+- Status or selected additional printer columns, where supported
+
+Do not assume every resource has a status field.
+
+Features:
+- Sortable columns where supported
+- Pagination
+- Configurable page size
+- Resource count
+- Refresh
+- Search/filter
+- Column selection
+- Row selection
+- Loading indicators
+- Empty results
+- API error handling
+
+Use Kubernetes list pagination with limit and continue tokens where supported.
+
+Avoid loading thousands of objects into browser memory.
+
+## 5. Resource Details Panel
+
+When a user clicks a resource, open a details panel on the right side, similar to the attached screenshot.
+
+Do not navigate away from Resource Explorer.
+
+Show the selected resource's name, Kind, namespace, API version, and relevant health/status indicators.
+
+Include these tabs:
+
+### Overview
+Display important information for the selected resource type.
+
+For Pods:
+- Pod phase and container states
+- Ready containers
+- Restart counts
+- Node
+- Pod IP
+- QoS class
+- Owner references
+- Labels and annotations
+- Container images
+- Resource requests and limits
+- Conditions
+
+For Deployments:
+- Desired, updated, ready, and available replicas
+- Strategy
+- Conditions
+- Container images
+- Selectors
+- Owner information
+
+For cluster-scoped or custom resources:
+- Kind
+- API version
+- Name
+- Labels
+- Annotations
+- Relevant spec fields
+- Conditions, if available
+
+### YAML
+Provide a read-only, syntax-highlighted YAML viewer.
 
 Requirements:
-
-- Display the available clusters from the backend.
-- Allow selecting 2–6 clusters.
-- Show cluster name and environment.
-- Use checkbox-style cluster selection cards.
-- Include a Compare button.
-- Allow selecting a baseline cluster.
-- Disable comparison until at least two clusters are selected.
-- Display loading and error states.
-
-Example cluster names: npe01, npe02, npe03, npe04, npe05, npe06.
-
-Do not hardcode cluster names or environments in production logic.
-
-## 4. Comparison Categories
-
-Below cluster selection, create horizontally arranged category tabs:
-
-1. Overview
-2. OpenShift Version
-3. Operators
-4. Security
-5. Networking
-6. Storage
-7. Node Configuration
-8. Observability
-
-Selecting a category should display the relevant comparison results without navigating to another page.
-
-Use the attached image for tab styling.
-
-## 5. Comparison Summary
-
-Display four compact summary cards:
-
-**Matching**
-- Number of configuration items that match across selected clusters.
-
-**Different**
-- Number of configuration items with different values.
-
-**Missing**
-- Number of resources missing from one or more selected clusters.
-
-**Unknown**
-- Number of items that could not be retrieved or compared.
-
-Use green, amber, red, and neutral-gray status indicators.
-
-Do not confuse an intentional configuration difference with a critical configuration problem.
-
-## 6. Comparison by Category
-
-Create a clean table with these columns:
-
-| Category | Matching | Different | Missing | Total | Status | Action |
-|---|---|---|---|---|---|---|
-
-Include these categories:
-
-- OpenShift Version
-- Operators
-- Security
-- Networking
-- Storage
-- Node Configuration
-- Observability
-
-Each row should show the number of matching, different, missing, and total items.
-
-The **View Details** action should open the selected category's comparison details within the same page.
-
-Do not display large YAML files in the summary table.
-
-## 7. Key Differences
-
-Below the category table, create a section named **Key Differences**.
-
-Display the most important configuration differences as compact, clickable list items.
-
-Each item should contain:
-
-- Resource or configuration name
-- Category
-- Affected cluster(s)
-- Brief description
-- Severity or review status
-
-Examples:
-
-- ACS policy baseline missing in npe03
-- Gatekeeper operator version mismatch
-- Worker MachineConfigPool updating
-- ClusterLogForwarder configuration differs
-- Default StorageClass differs
-
-Limit the initial display to five items and provide a View All option.
-
-Clicking an item should populate the adjacent Detail View panel.
-
-## 8. Detail View
-
-Create a panel named **Detail View** next to Key Differences, matching the attached dashboard layout.
-
-When a configuration item is selected, display:
-
-- Resource name
-- Resource type/category
-- Namespace, where applicable
-- Comparison status
-- Short explanation
-- Side-by-side values for selected clusters
-
-Example:
-
-**Gatekeeper Version**
-
-| Cluster | Version |
-|---|---|
-| npe01 | 3.18.0 |
-| npe02 | 3.18.0 |
-| npe03 | 3.17.0 |
-
-Highlight differences from the selected baseline.
-
-Add a **View YAML Diff** option for supported Kubernetes resources.
-
-The YAML diff should:
-
-- Compare normalized resource configurations.
-- Focus on meaningful `spec` fields and selected configuration metadata.
-- Exclude generated metadata such as UID, resourceVersion, managedFields, and timestamps.
-- Exclude sensitive information, including Secret contents, credentials, tokens, and private keys.
-- Support nested field differences and missing resources.
-- Show a clear message when a comparison is unavailable.
-
-For lists representing sets of named resources, normalize ordering where appropriate.
-
-## 9. Configuration Comparison Rules
-
-Support three comparison levels:
-
-**Level 1 — Presence**
-- Present
-- Missing
-- Unknown
-
-**Level 2 — Version and Status**
-- Operator versions
-- OpenShift version and channel
-- Installation status
-- MachineConfigPool conditions
-
-**Level 3 — Configuration**
-- Compare meaningful fields from selected platform resources.
-
-Prioritize these resource types:
-
-- ClusterVersion
-- ClusterOperators
-- Operator Subscriptions and CSVs
-- MachineConfigPools
-- MachineConfigs
-- KubeletConfigs
-- Gatekeeper ConstraintTemplates and constraints
-- SecurityContextConstraints
-- ClusterLogForwarders
-- IngressControllers
-- DNS and Network configuration
-- StorageClasses
-- Cert-Manager Issuers and ClusterIssuers
-- Service Mesh configuration
-
-Where available, include ACS policy configuration through supported APIs.
-
-Do not attempt to compare every Kubernetes resource in the first implementation.
-
-Support expected-difference rules for environment-specific settings such as API endpoints, ingress VIPs, CIDRs, and storage endpoints.
-
-A configuration difference should not automatically be classified as a critical issue.
-
-## 10. Recommendations
-
-In the Detail View, display a small recommendation section when a meaningful difference is detected.
-
-Examples:
-
-- Review a missing security policy.
-- Verify whether an older operator version is intentional.
-- Investigate an updating or degraded MachineConfigPool.
-- Confirm whether a networking difference is expected.
-
-Recommendations must be read-only and advisory.
-
-Do not provide buttons that automatically change cluster configuration.
-
-## 11. FastAPI Backend
-
-Inspect the existing FastAPI architecture and extend it using the established patterns.
-
-Suggested API endpoints:
-
-- `GET /api/compare/clusters`
-- `POST /api/compare`
-- `GET /api/compare/resources/{resource_id}/diff`
-
-The backend should:
-
-- Reuse the existing cluster registry and authentication.
-- Retrieve resource information using Kubernetes/OpenShift APIs.
-- Collect information concurrently with reasonable timeouts.
-- Normalize resource data before comparison.
-- Compare selected clusters against an optional baseline.
-- Return structured results for matching, different, missing, and unknown items.
-- Cache results where appropriate.
-- Handle unavailable clusters and insufficient permissions gracefully.
-- Avoid returning credentials or sensitive resource fields.
-- Enforce read-only access.
-
-Keep comparison logic separate from API route handlers.
-
-Create reusable normalization and comparison services.
-
-## 12. UI Design Requirements
-
-Follow the attached dashboard image closely.
-
-Visual style:
-
-- Dark navy left sidebar.
-- Light-gray application background.
-- White cards with subtle borders.
-- Blue accent color.
-- Green for matching.
-- Amber for differences requiring review.
-- Red for missing or confirmed critical issues.
-- Generous whitespace.
-- Compact, readable tables.
-- Rounded cards and consistent spacing.
-
-**Avoid overcrowding.**
-
-Use this layout order:
-
-1. Page header
-2. Cluster selection
-3. Category tabs
-4. Four summary cards
-5. Comparison by Category table
-6. Two-column bottom section:
-   - Left: Key Differences
-   - Right: Detail View
-
-Keep detailed YAML comparisons hidden until requested.
-
-Use responsive layouts for smaller screens and horizontal scrolling where needed.
-
-Do not add unrelated charts, metrics, or additional dashboards.
-
-## 13. Functional Requirements
-
-All visible controls must work:
-
-- Cluster selection
-- Baseline selection
-- Compare
-- Category tabs
-- View Details
-- Key Differences selection
-- View All
-- View YAML Diff
+- No editing
+- No Save or Apply buttons
+- Copy sanitized YAML
+- Download sanitized YAML
+- Search within YAML
+- Collapsible sections, if practical
+
+Exclude or redact sensitive data, credentials, tokens, private keys, and sensitive annotations.
+
+Do not expose Kubernetes Secret values.
+
+### Events
+Display relevant Kubernetes Events when available.
+
+Include:
+- Type
+- Reason
+- Message
+- Source/reporting component
+- Count
+- Last observed time
+
+Handle resource UID references correctly and account for differences between core/v1 and events.k8s.io/v1 Events.
+
+### Logs
+Show logs only for supported resources, primarily Pods.
+
+Features:
+- Container selector
+- Tail line count
+- Optional previous-container logs
 - Refresh
+- Search within displayed logs
 
-Provide proper loading, empty, error, and unavailable-cluster states.
+Logs must remain read-only.
 
-Use real API data when connected. Clearly identify mock data during local development.
+Apply backend authorization, bounded output size, timeouts, and sensitive-data protections.
 
-## 14. Implementation Approach
+Do not automatically retrieve logs for every Pod.
 
-Implement in phases:
+### Related Resources
+Where practical, display related objects.
 
-**Phase 1:** Frontend layout and reusable components matching the attached image.
+Examples:
+- Deployment → ReplicaSets → Pods
+- StatefulSet → Pods and PVCs
+- Pod → owning controller, Node, PVCs
+- Service → EndpointSlices and selected Pods
+- CronJob → Jobs
+- Job → Pods
 
-**Phase 2:** FastAPI endpoints for OpenShift versions, operator versions, presence, and status.
+Make related resources clickable to inspect them within Resource Explorer.
 
-**Phase 3:** Field-level configuration comparison and normalized YAML diff.
+Do not assume owner relationships for all custom resources.
 
-**Phase 4:** Expected-difference rules, recommendations, and report export.
+## 6. Dynamic Kubernetes/OpenShift API Discovery
+
+Implement API discovery rather than maintaining a hardcoded list of supported resources.
+
+The backend should discover:
+
+- API groups
+- API versions
+- Resource names and Kinds
+- Namespaced versus cluster scope
+- Supported verbs
+- Short names
+- Categories
+- Additional printer columns, where available
+
+Support both built-in Kubernetes APIs and OpenShift APIs.
+
+Examples:
+- pods
+- deployments.apps
+- routes.route.openshift.io
+- machineconfigpools.machineconfiguration.openshift.io
+- securitycontextconstraints.security.openshift.io
+- clusterlogforwarders.observability.openshift.io, where installed
+- Gatekeeper constraint kinds discovered dynamically
+
+Use API discovery to resolve the correct endpoint for the selected resource.
+
+Cache discovery results per cluster with a reasonable expiration period and provide a refresh mechanism.
+
+Handle missing CRDs, unsupported APIs, and discovery failures gracefully.
+
+## 7. Backend API Design
+
+Extend the existing FastAPI backend using its established patterns.
+
+Suggested endpoints:
+
+GET /api/resource-explorer/clusters
+
+GET /api/resource-explorer/{cluster}/api-resources
+
+GET /api/resource-explorer/{cluster}/namespaces
+
+GET /api/resource-explorer/{cluster}/resources
+
+GET /api/resource-explorer/{cluster}/resources/{name}
+
+GET /api/resource-explorer/{cluster}/resources/{name}/events
+
+GET /api/resource-explorer/{cluster}/resources/{name}/logs
+
+Use query parameters for:
+- API group
+- API version
+- Resource plural name
+- Namespace
+- Label selector
+- Field selector
+- Pagination limit
+- Continue token
+
+Design routes to avoid collisions and ambiguous resource identifiers.
+
+Reuse existing Kubernetes clients and cluster registry.
+
+Use a dynamic Kubernetes client where appropriate to support CRDs and OpenShift-specific resources.
+
+Do not create a separate hardcoded API handler for every resource Kind.
+
+Separate the implementation into:
+- API routes
+- Discovery service
+- Resource listing/detail service
+- Resource-specific presentation helpers
+- Security/redaction service
+- Response models
+
+## 8. Read-Only Security Requirements
+
+This is a critical requirement.
+
+The Resource Explorer must never perform:
+- Create
+- Update
+- Patch
+- Delete
+- Apply
+- Scale
+- Rollout restart
+- Exec
+- Port forwarding
+- Other mutating operations
+
+Enforce restrictions in both frontend and backend.
+
+Use read-only Kubernetes RBAC with only the required permissions.
+
+Do not grant cluster-admin to the Resource Explorer backend.
+
+Do not assume that all resources are safe to expose simply because they can be read.
+
+Implement a resource allowlist or explicit denylist policy that excludes sensitive resource types, including Secrets and sensitive custom resources.
+
+Do not return raw sensitive resource data to the frontend before redaction.
+
+Apply authorization checks to every endpoint, including YAML, Events, Logs, and Related Resources.
+
+Ensure users cannot bypass restrictions by changing API parameters.
+
+Audit resource access where appropriate.
+
+If a resource is forbidden, return a clear permission-denied response.
+
+## 9. Resource Search and Performance
+
+The portal may manage clusters containing thousands of Kubernetes objects.
+
+Optimize for performance:
+
+- Query only the selected cluster and resource type.
+- Use server-side label and field selectors where supported.
+- Use Kubernetes pagination.
+- Limit concurrent requests.
+- Set API request timeouts.
+- Cache discovery data.
+- Avoid repeated expensive full-cluster scans.
+- Cancel stale frontend requests when filters change.
+- Debounce search input.
+- Limit the size of YAML and logs returned.
+- Avoid loading large datasets solely to calculate summary counts.
+
+For generic resource types, distinguish exact server-side filtering from client-side filtering of the current page.
+
+Do not present incomplete pagination results as a cluster-wide count.
+
+## 10. Compare Clusters Integration
+
+Add an optional **Compare** action in the Resource Details panel.
+
+When selected, navigate to the existing Compare Clusters feature with the resource Kind, API group, namespace, and name preselected.
+
+The comparison should support:
+- Resource presence across selected clusters
+- Relevant versions, where applicable
+- Field-level configuration differences
+- Normalized YAML differences
+
+Reuse existing comparison logic.
+
+Do not duplicate the Compare Clusters implementation inside Resource Explorer.
+
+## 11. Remove All Editing Controls
+
+The attached reference image contains Edit buttons beside Labels and Annotations.
+
+**Do not implement these buttons.**
+
+Replace them with read-only labels and annotations.
+
+Also remove any action that would modify a Kubernetes resource.
+
+The Resource Explorer must remain strictly read-only.
+
+## 12. Testing Requirements
+
+Add tests for:
+
+- Cluster-scoped resources
+- Namespaced resources
+- CustomResourceDefinitions
+- Missing or unsupported resource types
+- API discovery failures
+- Forbidden resources
+- Resource redaction
+- Pagination
+- Namespace filtering
+- Resource selection
+- YAML display
+- Events retrieval
+- Log retrieval
+- Unavailable clusters
+
+Test the feature against Docker Desktop Kubernetes first.
+
+Ensure OpenShift-specific resources appear automatically when connected to an OpenShift cluster.
+
+## 13. Implementation Phases
+
+Implement incrementally.
+
+**Phase 1 — Frontend**
+- Resource Explorer page
+- Filters
+- Resource table
+- Details panel
+- Tabs
+- Mock data for UI development
+
+**Phase 2 — Core Backend**
+- Dynamic API discovery
+- Namespace and cluster-scoped resource listing
+- Resource details
+- Pagination
+- Security and redaction
+
+**Phase 3 — Troubleshooting**
+- Events
+- Pod logs
+- Related resources
+- Resource-specific details
+
+**Phase 4 — Integration**
+- Compare Clusters integration
+- Performance optimization
+- Export sanitized YAML
+- Tests and documentation
 
 For each phase:
+1. Explain the files to create or modify.
+2. Implement the feature.
+3. Run relevant tests.
+4. Fix errors.
+5. Provide commands for local verification.
+6. Confirm existing portal features remain functional.
 
-1. Identify files that need modification.
-2. Explain the proposed changes briefly.
-3. Implement the changes.
-4. Add appropriate tests.
-5. Verify the existing application still works.
-6. Provide commands to run and test locally.
-
-Do not overwrite working code unnecessarily.
+Do not implement all phases at once without validating the previous phase.
 
 ## Expected Result
 
-A production-oriented, read-only **Compare Clusters** feature integrated into my existing NPE Platform Portal.
+A clean, production-oriented Resource Explorer integrated into my existing NPE Platform Portal.
 
-The interface should closely resemble the attached dashboard image and help platform engineers quickly identify configuration inconsistencies across multiple OpenShift clusters.
+Platform engineers should be able to select a cluster, discover any permitted Kubernetes/OpenShift resource type, list its objects, inspect resource details, view sanitized YAML, investigate Events and supported Logs, and navigate to Compare Clusters.
 
-Prioritize **clarity, maintainability, meaningful comparisons, and minimal visual clutter**.
+The feature must be secure, scalable, fully read-only, and consistent with the attached dashboard design.
 
 
