@@ -1,500 +1,294 @@
+# Build Configuration Changes Dashboard — Platform Portal
 
-Act as a senior Kubernetes/OpenShift Platform Engineer, Python FastAPI developer, React/TypeScript developer, and enterprise UI/UX designer.
+Act as a senior Kubernetes platform engineer, Python FastAPI developer, and React/TypeScript frontend architect. Ignore anything that is not valid for exiting platform portal
 
-## Objective
+**Your task:** Implement a new **Configuration Changes** page that helps platform engineers identify Kubernetes configuration changes over time, investigate changes, and compare before/after configurations.
 
-Implement a production-oriented **Resource Explorer** feature in my existing NPE Platform Portal.
+Do not rebuild the existing application. First inspect the repository and reuse its routing, layout, styling, cluster registry, API client, authentication, and shared components.
 
-Use the attached dashboard screenshot as the visual reference, but improve the functionality and usability where appropriate.
+## 1. Dashboard design
 
-The Resource Explorer must allow platform engineers to discover, search, list, inspect, and view Kubernetes/OpenShift resources across multiple clusters.
+Create a clean, professional, enterprise-style dashboard consistent with the existing portal.
 
-**Critical requirement: The entire Resource Explorer must be strictly read-only. No resource creation, editing, patching, deletion, or execution is permitted.**
+Visual preferences:
+- Dark navy left navigation sidebar.
+- Light main content background.
+- White cards, subtle borders, blue accents.
+- Green for successful/low-risk changes, amber for review, red for concerning changes.
+- Spacious layout, not overcrowded.
+- Responsive desktop-first design.
 
-## 1. Existing Application
+Add a **Configuration Changes** navigation item.
 
-My environment:
+### Section A — Header and time filters
 
-- Frontend: React, TypeScript, Vite
-- Backend: Python FastAPI
-- Clusters: Multiple OpenShift clusters running on VMware vSphere
-- Development environment: Windows, VS Code, GitHub Copilot
-- Local testing: Docker Desktop Kubernetes cluster
-- Existing portal features: Overview, Clusters, Workloads, Capacity, Compare Clusters, and other platform operations
-- Cluster access: Existing backend Kubernetes/OpenShift client configuration and cluster registry
+Title: Configuration Changes
 
-Before writing code:
+Subtitle: Track configuration changes across Kubernetes clusters.
 
-1. Inspect the current repository structure.
-2. Identify existing frontend routes, navigation components, API clients, authentication, and backend Kubernetes clients.
-3. Reuse existing architecture, styling, and shared components.
-4. Do not replace or refactor unrelated working features.
-5. Present an implementation plan with the files to be created or modified.
+Provide:
+- Time range: Last 24 hours, 7 days, 30 days, 90 days.
+- Cluster: All clusters or individual cluster.
+- Namespace: All or selected namespace.
+- Resource type: All, Deployment, ConfigMap, NetworkPolicy, RBAC, Operator, etc.
+- Search by resource name, namespace, or change actor.
 
-## 2. Navigation and Page Layout
+Default time range: 7 days.
 
-Add a menu item named **Resource Explorer** under CONFIGURATION, near Compare Clusters.
+### Section B — Summary cards
 
-Page title: Resource Explorer
+Display four compact cards:
+1. Total Changes
+2. Clusters Affected
+3. Changes Requiring Review
+4. Latest Change
 
-Subtitle: Search, view, and inspect Kubernetes and OpenShift resources across your clusters.
+All values must come from actual backend data. Use loading, empty, unavailable, and error states. Do not hardcode demonstration counts in production.
 
-Follow the attached dashboard design:
+### Section C — Configuration Change Timeline
 
-- Dark navy sidebar
-- White and light-gray main workspace
-- Blue accents
-- Clean enterprise-style cards
-- Compact, readable tables
-- Consistent spacing
-- Responsive layout
+Display a simple, readable time-series chart of changes across the selected period.
 
-Use three main sections:
+Support grouping by day and optionally by change category.
 
-1. Resource selection and search
-2. Resource inventory
-3. Resource details panel
+Do not overload the chart with too many series.
 
-Keep the page uncluttered. Show advanced information only when requested.
+### Section D — Recent Configuration Changes
 
-## 3. Resource Selection and Search
+This is the primary section of the page.
 
-At the top, provide these controls:
+Create a searchable, sortable table with columns:
 
-**Cluster**
-- Select a single cluster.
-- Support all configured clusters.
-- Default to the currently selected cluster, if available.
-- Do not hardcode cluster names.
-- Handle unavailable clusters gracefully.
-
-**Resource Type**
-- Searchable dropdown populated dynamically using Kubernetes API discovery.
-- Include standard Kubernetes resources, OpenShift resources, and CustomResourceDefinitions.
-- Display resource Kind, plural name, and API group when necessary to avoid ambiguity.
-- Example: Pods, Deployments, Routes, MachineConfigPools, SecurityContextConstraints, ClusterLogForwarders, Gatekeeper constraints.
-- Support API group/version selection when required.
-
-**Scope**
-- Automatically detect whether the selected resource type is cluster-scoped or namespaced.
-- Do not require the user to guess the scope.
-
-**Namespace**
-- For namespaced resources, allow selection of a namespace or All Namespaces.
-- Disable or hide namespace selection for cluster-scoped resources.
-- Populate namespaces from the selected cluster.
-
-**Search**
-- Search resource names.
-- Support namespace filtering, label selectors, and supported field selectors.
-- Add a clear/reset option.
-- Validate selectors and show helpful error messages.
-- Debounce free-text searches where appropriate.
-
-**Important:** Do not fetch all resource types across all clusters when the page loads. Query only the selected resource type and cluster.
-
-## 4. Resource Inventory Table
-
-Display a table of resources returned by the Kubernetes/OpenShift API.
-
-Use columns appropriate to the selected resource type.
-
-For Pods:
-- Name
+- Time
+- Cluster
 - Namespace
-- Ready
-- Status
-- Restarts
-- Age
-- Node
+- Resource Type
+- Resource Name
+- Change Type (Created, Updated, Deleted)
+- Changed By
+- Review Status
 
-For Deployments:
-- Name
-- Namespace
-- Desired
-- Ready
-- Available
-- Age
+Examples of resources:
+- Deployment
+- StatefulSet
+- ConfigMap
+- NetworkPolicy
+- Service
+- Ingress
+- OpenShift Route
+- ClusterRole / ClusterRoleBinding
+- MachineConfigPool
+- Custom Resources
 
-For CronJobs:
-- Name
-- Namespace
-- Schedule
-- Suspend
-- Last Schedule
-- Active Jobs
+Provide pagination and filters.
 
-For MachineConfigPools:
-- Name
-- Updated
-- Updating
-- Degraded
-- Machine Count
-- Ready Count
+Clicking a row should open a details drawer rather than navigate to another page.
 
-For generic or custom resources:
-- Name
-- Namespace, when applicable
-- Kind
-- API Version
-- Age
-- Status or selected additional printer columns, where supported
+### Section E — Change Details Drawer
 
-Do not assume every resource has a status field.
+Display:
+- Cluster and platform
+- Resource kind/name/namespace
+- Change timestamp
+- Operation type
+- Actor, when known
+- Source of evidence (audit log, watch event, GitOps, or snapshot comparison)
+- Before and after configuration
+- Field-level differences
+- Related change ticket or Git commit, when available
 
-Features:
-- Sortable columns where supported
-- Pagination
-- Configurable page size
-- Resource count
-- Refresh
-- Search/filter
-- Column selection
-- Row selection
-- Loading indicators
-- Empty results
-- API error handling
+Use a side-by-side or unified YAML diff viewer with added, removed, and modified lines.
 
-Use Kubernetes list pagination with limit and continue tokens where supported.
+Ignore noisy fields when comparing resources, such as:
+- metadata.resourceVersion
+- metadata.managedFields
+- metadata.uid
+- metadata.creationTimestamp
+- status
+- Other volatile system-generated fields where appropriate
 
-Avoid loading thousands of objects into browser memory.
+Preserve security-relevant changes. Never hide a meaningful RBAC, NetworkPolicy, SCC, or security configuration change.
 
-## 5. Resource Details Panel
+Never display Secret values, passwords, tokens, or private keys.
 
-When a user clicks a resource, open a details panel on the right side, similar to the attached screenshot.
+Add links to the existing Resource Explorer and Compare Clusters features when available.
 
-Do not navigate away from Resource Explorer.
+## 2. Critical data collection requirements
 
-Show the selected resource's name, Kind, namespace, API version, and relevant health/status indicators.
+Kubernetes does NOT provide a built-in historical database of resource changes covering 1, 7, 30, or 90 days.
 
-Include these tabs:
+Do not assume that listing current Kubernetes resources provides historical changes.
 
-### Overview
-Display important information for the selected resource type.
+Design a reliable historical change collection architecture.
 
-For Pods:
-- Pod phase and container states
-- Ready containers
-- Restart counts
-- Node
-- Pod IP
-- QoS class
-- Owner references
-- Labels and annotations
-- Container images
-- Resource requests and limits
-- Conditions
+Support pluggable evidence sources:
 
-For Deployments:
-- Desired, updated, ready, and available replicas
-- Strategy
-- Conditions
-- Container images
-- Selectors
-- Owner information
+1. Kubernetes API watches/informers for resource change detection.
+2. Kubernetes or OpenShift audit logs for actor and operation information.
+3. Periodic sanitized resource snapshots for before/after comparison.
+4. Optional GitOps integration for Git commit and deployment correlation.
 
-For cluster-scoped or custom resources:
-- Kind
-- API version
-- Name
-- Labels
-- Annotations
-- Relevant spec fields
-- Conditions, if available
+Explain the reliability limitations of each source.
 
-### YAML
-Provide a read-only, syntax-highlighted YAML viewer.
+Important:
+- Watches identify observed state changes, but do not reliably identify the human actor.
+- Audit logs can help identify actors, but availability, retention, and payload detail depend on platform configuration.
+- GitOps commits show desired-state changes, which may differ from observed live-cluster changes.
+- Historical data cannot be reconstructed if it was never collected.
+- Deleted resources require prior snapshots or other retained evidence.
+- Watch reconnects, expired resource versions, and collector downtime require recovery/reconciliation handling.
 
-Requirements:
-- No editing
-- No Save or Apply buttons
-- Copy sanitized YAML
-- Download sanitized YAML
-- Search within YAML
-- Collapsible sections, if practical
+Use a persistent datastore for history. Inspect the existing project for a database before selecting a new one. 
 
-Exclude or redact sensitive data, credentials, tokens, private keys, and sensitive annotations.
+Record:
+- Unique event ID
+- Cluster ID
+- Provider
+- API group/version/kind
+- Namespace and resource name
+- Resource UID where available
+- Operation type
+- Observed timestamp
+- Audit timestamp where available
+- Actor and actor source
+- Evidence source
+- Before snapshot reference
+- After snapshot reference
+- Normalized diff
+- Collection confidence and completeness
+- Correlation IDs or Git commit metadata where available
 
-Do not expose Kubernetes Secret values.
+Deduplicate overlapping observations without incorrectly collapsing distinct updates.
 
-### Events
-Display relevant Kubernetes Events when available.
+Define retention and storage policies.
+
+Use common Kubernetes APIs wherever possible.
+
+Add optional provider adapters for platform-specific resources and audit integrations.
+
+Do not hardcode OpenShift APIs into shared frontend components.
+
+Use API discovery to identify supported resource types and capabilities.
+
+If a cluster does not support a feature, show "Not available" rather than an error or fabricated value.
+
+The frontend should receive normalized configuration change records regardless of platform.
+
+## 4. Backend API
+
+Implement or propose these endpoints, following the existing project's conventions:
+
+GET /api/config-changes/summary
+
+GET /api/config-changes
+
+GET /api/config-changes/{change_id}
+
+GET /api/config-changes/{change_id}/diff
+
+GET /api/config-changes/timeline
+
+GET /api/config-changes/capabilities
+
+Support filters:
+- cluster_ids
+- start_time
+- end_time
+- namespace
+- resource_kind
+- change_type
+- review_status
+- search
+- pagination
+
+Use UTC timestamps internally and format them in the UI according to user preferences.
+
+Define typed Pydantic response models.
+
+Avoid unbounded API queries.
+
+## 5. Security requirements
+
+The dashboard must be read-only.
+
+Do not provide buttons to:
+- Edit resources
+- Apply YAML
+- Roll back changes
+- Delete resources
+- Restart workloads
+
+Use least-privilege Kubernetes RBAC for monitoring and collection.
+
+Keep audit-log integration permissions separate from ordinary Kubernetes read permissions.
+
+Sanitize configuration snapshots and diffs before storage and before returning API responses.
+
+Do not persist Secret data, authentication credentials, or other sensitive configuration values.
+
+Apply cluster-level and namespace-level authorization to historical records and API responses, including data collected before a user's access changed.
+
+Record access to sensitive change investigations where required.
+
+## 6. Frontend implementation
+
+Use the existing React component library and styling conventions.
+
+Create reusable components such as:
+
+- ConfigurationChangesPage
+- ChangeSummaryCards
+- ChangeTimelineChart
+- ChangeFilters
+- ChangeTable
+- ChangeDetailsDrawer
+- ConfigurationDiffViewer
+- ChangeEvidenceStatus
 
 Include:
-- Type
-- Reason
-- Message
-- Source/reporting component
-- Count
-- Last observed time
-
-Handle resource UID references correctly and account for differences between core/v1 and events.k8s.io/v1 Events.
-
-### Logs
-Show logs only for supported resources, primarily Pods.
-
-Features:
-- Container selector
-- Tail line count
-- Optional previous-container logs
-- Refresh
-- Search within displayed logs
-
-Logs must remain read-only.
-
-Apply backend authorization, bounded output size, timeouts, and sensitive-data protections.
-
-Do not automatically retrieve logs for every Pod.
-
-### Related Resources
-Where practical, display related objects.
-
-Examples:
-- Deployment → ReplicaSets → Pods
-- StatefulSet → Pods and PVCs
-- Pod → owning controller, Node, PVCs
-- Service → EndpointSlices and selected Pods
-- CronJob → Jobs
-- Job → Pods
-
-Make related resources clickable to inspect them within Resource Explorer.
-
-Do not assume owner relationships for all custom resources.
-
-## 6. Dynamic Kubernetes/OpenShift API Discovery
-
-Implement API discovery rather than maintaining a hardcoded list of supported resources.
-
-The backend should discover:
-
-- API groups
-- API versions
-- Resource names and Kinds
-- Namespaced versus cluster scope
-- Supported verbs
-- Short names
-- Categories
-- Additional printer columns, where available
-
-Support both built-in Kubernetes APIs and OpenShift APIs.
-
-Examples:
-- pods
-- deployments.apps
-- routes.route.openshift.io
-- machineconfigpools.machineconfiguration.openshift.io
-- securitycontextconstraints.security.openshift.io
-- clusterlogforwarders.observability.openshift.io, where installed
-- Gatekeeper constraint kinds discovered dynamically
-
-Use API discovery to resolve the correct endpoint for the selected resource.
-
-Cache discovery results per cluster with a reasonable expiration period and provide a refresh mechanism.
-
-Handle missing CRDs, unsupported APIs, and discovery failures gracefully.
-
-## 7. Backend API Design
-
-Extend the existing FastAPI backend using its established patterns.
-
-Suggested endpoints:
-
-GET /api/resource-explorer/clusters
-
-GET /api/resource-explorer/{cluster}/api-resources
-
-GET /api/resource-explorer/{cluster}/namespaces
-
-GET /api/resource-explorer/{cluster}/resources
-
-GET /api/resource-explorer/{cluster}/resources/{name}
-
-GET /api/resource-explorer/{cluster}/resources/{name}/events
-
-GET /api/resource-explorer/{cluster}/resources/{name}/logs
-
-Use query parameters for:
-- API group
-- API version
-- Resource plural name
-- Namespace
-- Label selector
-- Field selector
-- Pagination limit
-- Continue token
-
-Design routes to avoid collisions and ambiguous resource identifiers.
-
-Reuse existing Kubernetes clients and cluster registry.
-
-Use a dynamic Kubernetes client where appropriate to support CRDs and OpenShift-specific resources.
-
-Do not create a separate hardcoded API handler for every resource Kind.
-
-Separate the implementation into:
-- API routes
-- Discovery service
-- Resource listing/detail service
-- Resource-specific presentation helpers
-- Security/redaction service
-- Response models
-
-## 8. Read-Only Security Requirements
-
-This is a critical requirement.
-
-The Resource Explorer must never perform:
-- Create
-- Update
-- Patch
-- Delete
-- Apply
-- Scale
-- Rollout restart
-- Exec
-- Port forwarding
-- Other mutating operations
-
-Enforce restrictions in both frontend and backend.
-
-Use read-only Kubernetes RBAC with only the required permissions.
-
-Do not grant cluster-admin to the Resource Explorer backend.
-
-Do not assume that all resources are safe to expose simply because they can be read.
-
-Implement a resource allowlist or explicit denylist policy that excludes sensitive resource types, including Secrets and sensitive custom resources.
-
-Do not return raw sensitive resource data to the frontend before redaction.
-
-Apply authorization checks to every endpoint, including YAML, Events, Logs, and Related Resources.
-
-Ensure users cannot bypass restrictions by changing API parameters.
-
-Audit resource access where appropriate.
-
-If a resource is forbidden, return a clear permission-denied response.
-
-## 9. Resource Search and Performance
-
-The portal may manage clusters containing thousands of Kubernetes objects.
-
-Optimize for performance:
-
-- Query only the selected cluster and resource type.
-- Use server-side label and field selectors where supported.
-- Use Kubernetes pagination.
-- Limit concurrent requests.
-- Set API request timeouts.
-- Cache discovery data.
-- Avoid repeated expensive full-cluster scans.
-- Cancel stale frontend requests when filters change.
-- Debounce search input.
-- Limit the size of YAML and logs returned.
-- Avoid loading large datasets solely to calculate summary counts.
-
-For generic resource types, distinguish exact server-side filtering from client-side filtering of the current page.
-
-Do not present incomplete pagination results as a cluster-wide count.
-
-## 10. Compare Clusters Integration
-
-Add an optional **Compare** action in the Resource Details panel.
-
-When selected, navigate to the existing Compare Clusters feature with the resource Kind, API group, namespace, and name preselected.
-
-The comparison should support:
-- Resource presence across selected clusters
-- Relevant versions, where applicable
-- Field-level configuration differences
-- Normalized YAML differences
-
-Reuse existing comparison logic.
-
-Do not duplicate the Compare Clusters implementation inside Resource Explorer.
-
-## 11. Remove All Editing Controls
-
-The attached reference image contains Edit buttons beside Labels and Annotations.
-
-**Do not implement these buttons.**
-
-Replace them with read-only labels and annotations.
-
-Also remove any action that would modify a Kubernetes resource.
-
-The Resource Explorer must remain strictly read-only.
-
-## 12. Testing Requirements
-
-Add tests for:
-
-- Cluster-scoped resources
-- Namespaced resources
-- CustomResourceDefinitions
-- Missing or unsupported resource types
-- API discovery failures
-- Forbidden resources
-- Resource redaction
+- TypeScript interfaces
+- API service functions
+- Loading/error/empty states
 - Pagination
-- Namespace filtering
-- Resource selection
-- YAML display
-- Events retrieval
-- Log retrieval
-- Unavailable clusters
+- Accessible controls
+- Responsive layout
 
-Test the feature against Docker Desktop Kubernetes first.
+Do not add unnecessary dependencies if existing packages can support the design.
 
-Ensure OpenShift-specific resources appear automatically when connected to an OpenShift cluster.
+## 7. Implementation approach
 
-## 13. Implementation Phases
+Work in stages.
 
-Implement incrementally.
+**Step 1:** Inspect the existing repository and explain which files and components can be reused.
 
-**Phase 1 — Frontend**
-- Resource Explorer page
-- Filters
-- Resource table
-- Details panel
-- Tabs
-- Mock data for UI development
+**Step 2:** Propose the architecture, data model, and file changes. Clearly identify which data sources are available now versus which require new collectors or integrations.
 
-**Phase 2 — Core Backend**
-- Dynamic API discovery
-- Namespace and cluster-scoped resource listing
-- Resource details
-- Pagination
-- Security and redaction
+**Step 3:** Implement the React dashboard with clearly labeled mock data only if real historical data is not yet available.
 
-**Phase 3 — Troubleshooting**
-- Events
-- Pod logs
-- Related resources
-- Resource-specific details
+**Step 4:** Implement the FastAPI read endpoints and typed response models.
 
-**Phase 4 — Integration**
-- Compare Clusters integration
-- Performance optimization
-- Export sanitized YAML
-- Tests and documentation
+**Step 5:** Implement or scaffold the historical collector and persistence layer separately from the read-only portal API.
 
-For each phase:
-1. Explain the files to create or modify.
-2. Implement the feature.
-3. Run relevant tests.
-4. Fix errors.
-5. Provide commands for local verification.
-6. Confirm existing portal features remain functional.
+**Step 6:** Integrate with the existing multi-cluster registry and provider adapters.
 
-Do not implement all phases at once without validating the previous phase.
+**Step 7:** Add tests for filtering, pagination, change detection, diff normalization, secret redaction, and authorization.
 
-## Expected Result
+**Step 8:** Provide setup instructions and a manual verification checklist.
 
-A clean, production-oriented Resource Explorer integrated into my existing NPE Platform Portal.
+## 8. Acceptance criteria
 
-Platform engineers should be able to select a cluster, discover any permitted Kubernetes/OpenShift resource type, list its objects, inspect resource details, view sanitized YAML, investigate Events and supported Logs, and navigate to Compare Clusters.
+- Users can select 1, 7, 30, or 90 days.
+- Users can view changes across multiple clusters.
+- The UI identifies resource, cluster, timestamp, and change type.
+- Actor information appears only when supported by evidence.
+- Clicking a change opens a readable before/after diff.
+- Sensitive values are never exposed.
+- Historical data is clearly distinguished from current-state data.
+- Missing history or unsupported integrations are shown transparently.
+- Existing portal pages continue working.
+- No cluster resources can be modified through this feature.
 
-The feature must be secure, scalable, fully read-only, and consistent with the attached dashboard design.
+
+**Start by inspecting my current project. Do not overwrite existing files or invent historical change data. Show your proposed file changes and implementation plan before modifying code.**
 
 
