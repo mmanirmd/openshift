@@ -1,293 +1,674 @@
-# Build Configuration Changes Dashboard — Platform Portal
 
-Act as a senior Kubernetes platform engineer, Python FastAPI developer, and React/TypeScript frontend architect. Ignore anything that is not valid for exiting platform portal
+## Your role
 
-**Your task:** Implement a new **Configuration Changes** page that helps platform engineers identify Kubernetes configuration changes over time, investigate changes, and compare before/after configurations.
+Act as a senior OpenShift/Kubernetes platform engineer, VMware vSphere infrastructure architect, Python FastAPI developer, React/TypeScript engineer, and network IPAM specialist.
 
-Do not rebuild the existing application. First inspect the repository and reuse its routing, layout, styling, cluster registry, API client, authentication, and shared components.
+I want you to implement a new feature called **IP Address Management** in the existing platform portal.
 
-## 1. Dashboard design
+The feature must help platform engineers identify available static IP addresses, plan network capacity for new OpenShift clusters, reserve IPs for future worker-node expansion, and generate installation configuration artifacts.
 
-Create a clean, professional, enterprise-style dashboard consistent with the existing portal.
+**This is an IP planning tool, NOT a cluster creation tool.**
 
-Visual preferences:
-- Dark navy left navigation sidebar.
-- Light main content background.
-- White cards, subtle borders, blue accents.
-- Green for successful/low-risk changes, amber for review, red for concerning changes.
-- Spacious layout, not overcrowded.
-- Responsive desktop-first design.
+Do not implement cluster creation, VM provisioning, or cluster installation.
 
-Add a **Configuration Changes** navigation item.
+## 1. Existing application architecture
 
-### Section A — Header and time filters
+- Kubernetes/OpenShift integration: Kubernetes APIs and OpenShift APIs
+- Infrastructure: On-premises VMware vSphere
+- Multiple OpenShift clusters managed through ACM/Hive
+- Authentication: Enterprise SSO/LDAP
+- Existing portal: read-only
 
-Title: Configuration Changes
+Before writing code:
 
-Subtitle: Track configuration changes across Kubernetes clusters.
+1. Inspect the current project structure.
+2. Identify existing frontend components, routing, backend APIs, cluster registry, authentication, and authorization.
+3. Reuse existing UI components and API clients.
+4. Do not rebuild or redesign unrelated portal features.
+5. Do not change existing cluster monitoring behavior.
+6. Propose an implementation plan before modifying files.
 
-Provide:
-- Time range: Last 24 hours, 7 days, 30 days, 90 days.
-- Cluster: All clusters or individual cluster.
-- Namespace: All or selected namespace.
-- Resource type: All, Deployment, ConfigMap, NetworkPolicy, RBAC, Operator, etc.
-- Search by resource name, namespace, or change actor.
+## 2. Feature location and dashboard design
 
-Default time range: 7 days.
+The dashboard should have a modern enterprise design consistent with the existing portal:
 
-### Section B — Summary cards
+- Dark navy sidebar
+- Light background
+- White cards
+- Blue primary actions
+- Green/amber/red status indicators
+- Clean tables and readable typography
+- Minimal clutter
+- Responsive layout
 
-Display four compact cards:
-1. Total Changes
-2. Clusters Affected
-3. Changes Requiring Review
-4. Latest Change
+Create five tabs:
 
-All values must come from actual backend data. Use loading, empty, unavailable, and error states. Do not hardcode demonstration counts in production.
+1. IP Planning
+2. IP Inventory
+3. IP Reservations
+4. Subnets & Clusters
+5. Allocation History
 
-### Section C — Configuration Change Timeline
+The main IP Planning page should contain four sections:
 
-Display a simple, readable time-series chart of changes across the selected period.
+**Section 1 — Cluster Details**
 
-Support grouping by day and optionally by change category.
+Fields:
+- Cluster name
+- Detected environment
+- Detected zone
+- Control-plane node count
+- Initial worker-node count
+- Worker growth capacity: fixed at 3× initial workers
 
-Do not overload the chart with too many series.
+**Section 2 — Subnet Selection**
 
-### Section D — Recent Configuration Changes
+- Automatically discover matching existing clusters.
+- Display their subnets.
+- Allow the engineer to select a matching subnet.
+- Provide a manual option to enter a different existing subnet.
 
-This is the primary section of the page.
+**Section 3 — IP Plan & Capacity**
 
-Create a searchable, sortable table with columns:
+- Subnet utilization
+- Reserved IP ranges
+- Existing allocations
+- Proposed new allocations
+- Future worker IP reservations
+- Available capacity after allocation
 
-- Time
+**Section 4 — Generated Installation Configuration**
+
+- Preview generated install-config.yaml
+- Copy configuration
+- Download install-config.yaml
+- Download provisioning bundle as ZIP
+
+
+## 3. Cluster naming convention
+
+The portal must detect subnet from the cluster name.
+
+Use these rules:
+
+| Cluster pattern | Environment |
+|---|---|
+| npe00X | LAB |
+| npe01X | DE |
+| npe20X| QAE | and npe40x | PRE
+| npe30X | PTE |
+| prd90X | PRD |
+
+Examples:
+
+- npe004 → LAB
+- npe011, npe012 → DEV
+- npe201 → QAE and NPE401 -> PRE (Will use same subnet)
+- npe301 → PTE
+- prd901 → PRD
+
+The final number identify the cluster instance.
+
+
+Instead, obtain the zone from existing cluster name such us1b, usw1c etc
+
+
+The system must:
+
+1. Parse the cluster name.
+2. Identify the environment.
+3. Identify the naming family.
+4. Find existing clusters belonging to the same family.
+5. Determine their associated subnets and zones.
+6. Present matching subnets for selection.
+
+Example:
+
+Existing clusters:
+- npe301
+- npe302
+
+New cluster:
+- npe303
+
+Expected behavior:
+- Detect environment: PTE
+- Detect family: npe30X
+- Discover the subnets associated with npe301 and npe302
+- Display matching existing subnets
+- Automatically select a subnet only when the mapping is unambiguous
+- If multiple matching subnets exist, require the user to select one
+- Do not guess when mapping information is missing
+
+## 4. Existing subnet discovery
+
+Use the existing cluster registry and available Kubernetes/OpenShift APIs to identify:
+
+- Cluster name
+- Environment
+- Zone
+- Node IP addresses
+- Node subnets, when known
+- Network CIDR
+- Existing IP allocations
+
+Important distinction:
+
+Kubernetes node IPs alone do not always identify the authoritative subnet or its ownership.
+
+Where possible, integrate with:
+- Existing cluster network inventory
+- VMware vCenter
+- Enterprise IPAM
+- DNS
+- Approved infrastructure configuration records
+
+Do not assume that an IP address is available simply because no Kubernetes node currently uses it.
+
+When the system cannot verify a subnet or IP address, mark it as **Unverified** rather than Available.
+
+## 5. Manual selection of a different existing subnet
+
+Provide two subnet selection modes.
+
+### Mode A — Use Subnet from Existing Cluster
+
+This should be the default.
+
+Display matching clusters and their subnet information.
+
+Example:
+
+| Cluster | Environment | Zone | Subnet |
+|---|---|---|---|
+| npe301 | PTE | Zone 1 | 10.30.10.0/24 |
+| npe302 | PTE | Zone 1 | 10.30.10.0/24 |
+
+When a matching subnet is found, automatically populate the subnet selection.
+
+### Mode B — Use a Different Existing Subnet
+
+Allow the engineer to manually enter a CIDR.
+
+Example:
+
+10.30.20.0/24
+
+Validate:
+
+- CIDR syntax
+- Network address
+- Usable address count
+- Overlapping networks
+- Existing allocations
+- Infrastructure reservations
+- Gateway and routing configuration
+- VLAN and zone compatibility
+- Whether the subnet actually exists in the authoritative network inventory
+
+Do not create a new subnet automatically.
+
+If an entered subnet cannot be verified, show a warning and prevent final reservation until an authorized verification or approval process is completed.
+
+## 6. Reserved IP address policy
+
+For the existing /24 subnet convention, the first 40 addresses are reserved.
+
+Example:
+
+Subnet: 10.30.10.0/24
+
+Reserved:
+
+10.30.10.0 through 10.30.10.39
+
+Available candidate range begins at:
+
+10.30.10.40
+
+Never allocate addresses from the reserved range.
+
+The reserved range is intended for infrastructure and platform use.
+
+Make this policy configurable per subnet.
+
+Do not blindly apply the last-octet rule to arbitrary CIDR sizes. Use CIDR-aware calculations and explicit reserved address ranges.
+
+Always exclude:
+- Network addresses
+- Broadcast addresses where applicable
+- Configured gateway addresses
+- Existing node IPs
+- VIPs
+- Existing infrastructure allocations
+- Previously reserved addresses
+- Other authoritative exclusions
+
+Do not assume all free addresses form a continuous range.
+
+## 7. Worker-node growth policy
+
+The system must reserve capacity for **three times the initial worker-node count**.
+
+This means:
+
+Total worker capacity = Initial workers × 3
+
+Future worker reservation = Initial workers × 2
+
+Example:
+
+Initial workers: 6
+
+Future workers: 12
+
+Total supported workers: 18
+
+This is the required policy.
+
+Do not interpret 3× as adding three times the original count.
+
+### IP calculation example
+
+New cluster:
+- 3 control-plane nodes
+- 6 initial workers
+- 12 future workers
+- 1 API VIP
+- 1 Ingress VIP
+
+Required addresses:
+
+3 + 6 + 12 + 2 = 23
+
+The dashboard must display:
+
+- Initial workers: 6
+- Future worker capacity: 12
+- Total worker capacity: 18
+- Total required IP addresses: 23
+
+VIP allocation must be configurable according to the installation architecture. If VIPs are provided by an external load balancer or allocated from another subnet, do not double-count them.
+
+If additional bootstrap or infrastructure IPs are required, include them explicitly in the calculation.
+
+## 8. IP allocation algorithm
+
+Implement the allocation engine in Python.
+
+Use Python's standard `ipaddress` module.
+
+The allocation engine must:
+
+1. Parse the subnet.
+2. Load authoritative existing allocations and reservations.
+3. Apply infrastructure exclusions.
+4. Calculate usable candidate addresses.
+5. Determine required capacity.
+6. Allocate IPs for control-plane nodes.
+7. Allocate IPs for initial worker nodes.
+8. Allocate VIPs when required.
+9. Reserve additional IPs for future worker growth.
+10. Return remaining capacity.
+
+Prefer available addresses according to configurable allocation policy.
+
+Do not require addresses to be contiguous if the subnet has gaps.
+
+If insufficient capacity exists, show a clear error.
+
+Example:
+
+"Insufficient subnet capacity. Required: 23 addresses. Verified available: 18. Additional addresses needed: 5."
+
+Never allocate the same address to two clusters.
+
+Use database transactions, uniqueness constraints, and appropriate concurrency controls to prevent simultaneous users from reserving overlapping addresses.
+
+Distinguish between:
+- In Use
+- Reserved — Infrastructure
+- Reserved — Existing Cluster
+- Proposed — New Cluster
+- Reserved — Future Worker
+- Available — Verified
+- Unknown / Unverified
+
+A preview is not a committed reservation.
+
+## 9. IP allocation results
+
+Display a table containing:
+
+- Resource role
+- Hostname
+- IP address
+- Subnet
+- Zone
+- Allocation status
+
+Example:
+
+| Role | Hostname | IP |
+|---|---|---|
+| API VIP | npe303-api | 10.30.10.40 |
+| Ingress VIP | npe303-ingress | 10.30.10.41 |
+| Master 0 | npe303-master-0 | 10.30.10.42 |
+| Master 1 | npe303-master-1 | 10.30.10.43 |
+| Master 2 | npe303-master-2 | 10.30.10.44 |
+| Worker 0 | npe303-worker-0 | 10.30.10.45 |
+| Worker 1 | npe303-worker-1 | 10.30.10.46 |
+
+Continue for all initial workers and 12 future worker reservations.
+
+These addresses are illustrative only. Actual assignments must be generated from verified inventory.
+
+Allow export as CSV and JSON.
+
+## 10. Subnet capacity visualization
+
+Display a compact subnet utilization bar showing:
+
+- Infrastructure-reserved addresses
+- Existing allocated addresses
+- Proposed addresses for the new cluster
+- Future worker reservations
+- Remaining verified available addresses
+- Unknown or unverified addresses
+
+Include counts and percentages.
+
+Calculate counts from real inventory.
+
+Do not hardcode dashboard statistics.
+
+## 11. OpenShift install-config.yaml generation
+
+Generate an OpenShift installation configuration appropriate for the selected OpenShift version and installation method.
+
+My environment uses VMware vSphere and ACM/Hive ClusterDeployment.
+
+Before implementing the generator:
+
+1. Inspect existing installation templates and cluster build manifests in the repository.
+2. Identify the installation method and OpenShift version.
+3. Determine how static node networking is currently configured.
+4. Determine which values belong in install-config.yaml.
+5. Determine whether NMState manifests, agent-config.yaml, or other installation artifacts are required.
+6. Reuse existing templates where possible.
+
+Do not assume every node IP belongs directly in install-config.yaml.
+
+Support configurable:
+- Cluster name
+- Base domain
+- OpenShift version
+- vCenter settings
+- Datacenter
 - Cluster
-- Namespace
-- Resource Type
-- Resource Name
-- Change Type (Created, Updated, Deleted)
-- Changed By
-- Review Status
+- Datastore
+- Network
+- Machine network
+- Service network
+- Cluster network
+- Host network configuration
+- VIP configuration
+- Control-plane replicas
+- Worker replicas
 
-Examples of resources:
-- Deployment
-- StatefulSet
-- ConfigMap
-- NetworkPolicy
-- Service
-- Ingress
-- OpenShift Route
-- ClusterRole / ClusterRoleBinding
-- MachineConfigPool
-- Custom Resources
+Generate version-compatible configuration only.
 
-Provide pagination and filters.
+Validate generated YAML syntax and required schema fields.
 
-Clicking a row should open a details drawer rather than navigate to another page.
+Never invent infrastructure values.
 
-### Section E — Change Details Drawer
+Do not include actual pull secrets, private SSH keys, or credentials in an unsecured preview or download.
 
-Display:
-- Cluster and platform
-- Resource kind/name/namespace
-- Change timestamp
-- Operation type
-- Actor, when known
-- Source of evidence (audit log, watch event, GitOps, or snapshot comparison)
-- Before and after configuration
-- Field-level differences
-- Related change ticket or Git commit, when available
+When the required configuration is unavailable, report missing fields rather than producing a misleading "Ready" status.
 
-Use a side-by-side or unified YAML diff viewer with added, removed, and modified lines.
+## 12. Provisioning bundle
 
-Ignore noisy fields when comparing resources, such as:
-- metadata.resourceVersion
-- metadata.managedFields
-- metadata.uid
-- metadata.creationTimestamp
-- status
-- Other volatile system-generated fields where appropriate
+Allow the user to download a ZIP containing appropriate artifacts.
 
-Preserve security-relevant changes. Never hide a meaningful RBAC, NetworkPolicy, SCC, or security configuration change.
+Possible contents:
 
-Never display Secret values, passwords, tokens, or private keys.
+- install-config.yaml
+- ip-allocation.csv
+- ip-allocation.json
+- subnet-capacity-report.json
+- static-network manifests, if applicable
+- README with required manual steps
 
-Add links to the existing Resource Explorer and Compare Clusters features when available.
+The bundle should describe which addresses are proposed versus committed reservations.
 
-## 2. Critical data collection requirements
+Do not trigger installation.
 
-Kubernetes does NOT provide a built-in historical database of resource changes covering 1, 7, 30, or 90 days.
+Do not create a ClusterDeployment.
 
-Do not assume that listing current Kubernetes resources provides historical changes.
+Do not create VMs.
 
-Design a reliable historical change collection architecture.
+## 13. Backend API design
 
-Support pluggable evidence sources:
+Follow existing FastAPI routing conventions.
 
-1. Kubernetes API watches/informers for resource change detection.
-2. Kubernetes or OpenShift audit logs for actor and operation information.
-3. Periodic sanitized resource snapshots for before/after comparison.
-4. Optional GitOps integration for Git commit and deployment correlation.
+Suggested endpoints:
 
-Explain the reliability limitations of each source.
+GET /api/ipam/naming-rules
 
-Important:
-- Watches identify observed state changes, but do not reliably identify the human actor.
-- Audit logs can help identify actors, but availability, retention, and payload detail depend on platform configuration.
-- GitOps commits show desired-state changes, which may differ from observed live-cluster changes.
-- Historical data cannot be reconstructed if it was never collected.
-- Deleted resources require prior snapshots or other retained evidence.
-- Watch reconnects, expired resource versions, and collector downtime require recovery/reconciliation handling.
+GET /api/ipam/subnets
 
-Use a persistent datastore for history. Inspect the existing project for a database before selecting a new one. 
+GET /api/ipam/subnets/{subnet_id}
 
-Record:
-- Unique event ID
-- Cluster ID
-- Provider
-- API group/version/kind
-- Namespace and resource name
-- Resource UID where available
-- Operation type
-- Observed timestamp
-- Audit timestamp where available
-- Actor and actor source
-- Evidence source
-- Before snapshot reference
-- After snapshot reference
-- Normalized diff
-- Collection confidence and completeness
-- Correlation IDs or Git commit metadata where available
+GET /api/ipam/matching-clusters
 
-Deduplicate overlapping observations without incorrectly collapsing distinct updates.
+POST /api/ipam/validate-subnet
 
-Define retention and storage policies.
+POST /api/ipam/plan
 
-Use common Kubernetes APIs wherever possible.
+GET /api/ipam/allocations
 
-Add optional provider adapters for platform-specific resources and audit integrations.
+GET /api/ipam/reservations
 
-Do not hardcode OpenShift APIs into shared frontend components.
+POST /api/ipam/reservations
 
-Use API discovery to identify supported resource types and capabilities.
+GET /api/ipam/history
 
-If a cluster does not support a feature, show "Not available" rather than an error or fabricated value.
+POST /api/ipam/generate-install-config
 
-The frontend should receive normalized configuration change records regardless of platform.
+POST /api/ipam/generate-bundle
 
-## 4. Backend API
+Use typed Pydantic models.
 
-Implement or propose these endpoints, following the existing project's conventions:
+Separate planning from reservation.
 
-GET /api/config-changes/summary
+Planning endpoints must not modify Kubernetes clusters or external infrastructure.
 
-GET /api/config-changes
+Reservation endpoints must be separately authorized and auditable.
 
-GET /api/config-changes/{change_id}
+If the portal is required to remain strictly read-only, disable reservation writes and support exporting an allocation proposal for approval through an external IPAM workflow.
 
-GET /api/config-changes/{change_id}/diff
+## 14. Data persistence
 
-GET /api/config-changes/timeline
+Inspect the existing application database before introducing new storage.
 
-GET /api/config-changes/capabilities
+Use persistent storage for:
 
-Support filters:
-- cluster_ids
-- start_time
-- end_time
-- namespace
-- resource_kind
-- change_type
-- review_status
-- search
-- pagination
+- Subnet inventory
+- Naming rules
+- Cluster-to-subnet mappings
+- Infrastructure exclusions
+- Existing IP allocations
+- Proposed allocations
+- Committed reservations
+- Reservation ownership
+- Allocation history
+- Approval references
+- Creation and modification timestamps
 
-Use UTC timestamps internally and format them in the UI according to user preferences.
+Support reservation expiration and cleanup for abandoned plans.
 
-Define typed Pydantic response models.
+Do not delete historical allocation records simply because an IP becomes available again.
 
-Avoid unbounded API queries.
+## 15. Security and authorization
 
-## 5. Security requirements
+The portal must preserve its existing read-only Kubernetes access.
 
-The dashboard must be read-only.
+IP planning should not require cluster-admin privileges.
 
-Do not provide buttons to:
-- Edit resources
-- Apply YAML
-- Roll back changes
-- Delete resources
-- Restart workloads
+Separate roles:
 
-Use least-privilege Kubernetes RBAC for monitoring and collection.
+**Viewer**
+- View subnet inventory
+- View allocations
+- View reservation history
 
-Keep audit-log integration permissions separate from ordinary Kubernetes read permissions.
+**Platform Engineer**
+- Generate allocation plans
+- Validate subnets
+- Download installation artifacts
 
-Sanitize configuration snapshots and diffs before storage and before returning API responses.
+**IPAM Administrator**
+- Approve or commit IP reservations
+- Manage subnet mappings
+- Update reserved ranges
 
-Do not persist Secret data, authentication credentials, or other sensitive configuration values.
+Do not allow arbitrary subnet registration or reservation changes without authorization.
 
-Apply cluster-level and namespace-level authorization to historical records and API responses, including data collected before a user's access changed.
+Audit all reservation changes.
 
-Record access to sensitive change investigations where required.
+Do not expose infrastructure credentials in frontend responses.
 
-## 6. Frontend implementation
+Use server-side validation for all user input.
 
-Use the existing React component library and styling conventions.
+## 16. Frontend components
 
 Create reusable components such as:
 
-- ConfigurationChangesPage
-- ChangeSummaryCards
-- ChangeTimelineChart
-- ChangeFilters
-- ChangeTable
-- ChangeDetailsDrawer
-- ConfigurationDiffViewer
-- ChangeEvidenceStatus
+- IPManagementPage
+- ClusterRequirementsForm
+- ClusterNamingDetector
+- SubnetSelectionPanel
+- MatchingClusterTable
+- IPAllocationPlan
+- SubnetCapacityBar
+- IPInventoryTable
+- IPReservationsTable
+- AllocationHistory
+- InstallConfigPreview
+- ProvisioningBundleDownload
 
-Include:
-- TypeScript interfaces
-- API service functions
-- Loading/error/empty states
-- Pagination
-- Accessible controls
-- Responsive layout
+Reuse the existing component library and styling.
 
-Do not add unnecessary dependencies if existing packages can support the design.
+Use loading, error, empty, and unavailable states.
 
-## 7. Implementation approach
+Keep the dashboard compact and easy to follow.
 
-Work in stages.
+Do not add a Create Cluster button.
 
-**Step 1:** Inspect the existing repository and explain which files and components can be reused.
+## 17. Testing requirements
 
-**Step 2:** Propose the architecture, data model, and file changes. Clearly identify which data sources are available now versus which require new collectors or integrations.
+Add unit and integration tests for:
 
-**Step 3:** Implement the React dashboard with clearly labeled mock data only if real historical data is not yet available.
+1. Cluster naming pattern detection.
+2. Environment detection.
+3. Matching existing clusters by naming family.
+4. Multiple matching subnet selection.
+5. Missing subnet mappings.
+6. Manual existing-subnet validation.
+7. Reserved .0–.39 range.
+8. Existing allocated addresses.
+9. Noncontiguous available IPs.
+10. Three-times worker growth calculation.
+11. Insufficient subnet capacity.
+12. CIDR validation and overlap.
+13. Concurrent reservation attempts.
+14. Duplicate IP prevention.
+15. YAML generation and validation.
+16. Role-based authorization.
+17. No unintended Kubernetes writes.
+18. Unknown/unverified IP handling.
 
-**Step 4:** Implement the FastAPI read endpoints and typed response models.
+Use mock Kubernetes and IPAM data for tests.
 
-**Step 5:** Implement or scaffold the historical collector and persistence layer separately from the read-only portal API.
+Do not make production infrastructure changes during development or testing.
 
-**Step 6:** Integrate with the existing multi-cluster registry and provider adapters.
+## 18. Implementation sequence
 
-**Step 7:** Add tests for filtering, pagination, change detection, diff normalization, secret redaction, and authorization.
+Implement in manageable phases.
 
-**Step 8:** Provide setup instructions and a manual verification checklist.
+### Phase 1 — Repository analysis
 
-## 8. Acceptance criteria
+Inspect the existing project.
 
-- Users can select 1, 7, 30, or 90 days.
-- Users can view changes across multiple clusters.
-- The UI identifies resource, cluster, timestamp, and change type.
-- Actor information appears only when supported by evidence.
-- Clicking a change opens a readable before/after diff.
-- Sensitive values are never exposed.
-- Historical data is clearly distinguished from current-state data.
-- Missing history or unsupported integrations are shown transparently.
-- Existing portal pages continue working.
-- No cluster resources can be modified through this feature.
+Identify reusable components and services.
 
+Provide the proposed architecture and file changes.
+
+### Phase 2 — Frontend dashboard
+
+Implement the IP Planning page and associated tabs.
+
+Use clearly labeled mock data until the backend is connected.
+
+### Phase 3 — Subnet discovery
+
+Integrate the existing cluster registry and available network inventory.
+
+Implement naming-family matching and subnet selection.
+
+### Phase 4 — Allocation engine
+
+Implement reserved ranges, capacity calculations, worker growth reservations, and conflict detection.
+
+### Phase 5 — Installation configuration
+
+Generate and validate install-config.yaml and supporting provisioning artifacts.
+
+### Phase 6 — Reservation workflow
+
+Add persistent reservations only if approved and authorized.
+
+### Phase 7 — Testing and documentation
+
+Add automated tests, API documentation, and a user guide.
+
+## 19. Acceptance criteria
+
+The feature is complete when:
+
+- Entering `npe303` detects PTE.
+- The portal searches existing `npe30X` clusters.
+- Matching existing subnets are displayed.
+- An unambiguous subnet can be selected automatically.
+- The engineer can enter a different existing subnet when needed.
+- IP addresses `.0–.39` are excluded for applicable subnet policies.
+- Six initial workers result in 12 additional worker reservations.
+- Total worker capacity is 18.
+- The allocation engine accounts for existing addresses and exclusions.
+- The portal prevents duplicate committed reservations.
+- Available IP counts are based on verified inventory.
+- The portal generates valid installation artifacts for the configured installation method.
+- The user can download the allocation plan and configuration bundle.
+- No Create Cluster action exists.
+- No cluster installation is triggered.
+- Existing portal functionality remains unchanged.
+
+## Final instructions
+
+Start by inspecting the existing project and providing:
+
+1. Current architecture summary.
+2. Reusable files and components.
+3. Proposed new files.
+4. Backend data model.
+5. API endpoint design.
+6. Frontend component plan.
+7. Security and permission implications.
+8. Implementation phases.
+
+**Do not modify any code until you have presented the plan.**
+
+After approval, implement one phase at a time and validate each phase before continuing.
 
 **Start by inspecting my current project. Do not overwrite existing files or invent historical change data. Show your proposed file changes and implementation plan before modifying code.**
 
